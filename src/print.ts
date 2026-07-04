@@ -53,7 +53,7 @@ function printTag(path: AstPath<TagNode>, recurse: Recurse): Doc {
         hasBlockChild = true;
         return [hardline, recurse(childPath)];
       case 'code': {
-        if (isBlockCode(child)) {
+        if (isBlockCode(child) || isControlFlow(child)) {
           hasBlockChild = true;
           return [softline, recurse(childPath)];
         }
@@ -63,10 +63,10 @@ function printTag(path: AstPath<TagNode>, recurse: Recurse): Doc {
         const inline =
           i === 0 || (prev?.type === 'text' && prev.content !== '');
         if (!inline) return [softline, recurse(childPath)];
-        // Separate the expression from following inline text with a space.
-        const next = children[i + 1];
-        const spaceAfter = next?.type === 'text' && next.content.trim() !== '';
-        return spaceAfter ? [recurse(childPath), ' '] : recurse(childPath);
+        // Preserve the word boundary when the expression follows text whose
+        // trailing whitespace was trimmed away (e.g. `Hello @Name`).
+        const spaceBefore = prev?.type === 'text' && /\s$/.test(prev.content);
+        return spaceBefore ? [' ', recurse(childPath)] : recurse(childPath);
       }
       case 'comment':
         hasBlockChild = true;
@@ -77,7 +77,14 @@ function printTag(path: AstPath<TagNode>, recurse: Recurse): Doc {
           hasBlockChild = true;
           return softline;
         }
-        return recurse(childPath);
+        // Preserve the word boundary when text follows an inline expression
+        // and its leading whitespace was trimmed away.
+        const prev = children[i - 1];
+        const spaceBefore =
+          prev?.type === 'code' &&
+          !isBlockCode(prev) &&
+          /^\s/.test(child.content);
+        return spaceBefore ? [' ', recurse(childPath)] : recurse(childPath);
       }
     }
   }, 'children');
@@ -112,13 +119,16 @@ function printCode(path: AstPath<CodeNode>, recurse: Recurse): Doc {
   if (block) {
     return [name, indent([softline, printed, dedent(line)]), '}'];
   }
-  const lower = name.toLowerCase();
-  if (lower.startsWith('@if') || lower.startsWith('@for')) {
-    return [softline, name, printed];
-  }
   return [name, printed];
 }
 
 function isBlockCode(node: CodeNode): boolean {
   return node.name === '{' || node.name.includes('@{');
+}
+
+// Razor control-flow keywords render on their own line, like block openers.
+// The word boundary keeps `@for`/`@foreach` from also matching `@forecast`.
+const controlFlowRE = /^(?:@(?:if|foreach|for|while|switch|do)|else)\b/i;
+function isControlFlow(node: CodeNode): boolean {
+  return controlFlowRE.test(node.name.trim());
 }

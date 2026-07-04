@@ -5,8 +5,11 @@ import type { CodeNode, RazorNode, RootNode, TagNode } from './ast.ts';
 import { parseCode } from './parse-code.ts';
 import { parseTag } from './parse-tag.ts';
 
+// The `^@[^{\r\n]+` alternative must stop before `{` so that a same-line block
+// opener (K&R `@foreach (...) {`) is tokenized as a separate `{` block rather
+// than swallowed into the expression (which dropped the matching `}`).
 const tagRE =
-  /(?:@\*.+\*@|(?:^@.+|(?<!")@[^{\r\n<]+|else[^{\r\n<]*|for[^{\r\n<]*)|<[^<|"]*(("[^"]*")[^>|"]*)*>|[@]*\{|\})/gim;
+  /(?:@\*.+\*@|(?:^@[^{\r\n]+|(?<!")@[^{\r\n<]+|else[^{\r\n<]*|for[^{\r\n<]*)|<[^<|"]*(("[^"]*")[^>|"]*)*>|[@]*\{|\})/gim;
 const codeRE = /@code\s*{/i;
 const wsRE = /^\s*$/;
 
