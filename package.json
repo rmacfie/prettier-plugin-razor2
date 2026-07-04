@@ -31,14 +31,12 @@
   "scripts": {
     "example": "prettier --plugin ./src/index.js example.razor",
     "format": "prettier --write .",
-    "test": "jest"
+    "test": "node --test \"tests/**/*.test.js\""
   },
   "dependencies": {
     "void-elements": "^3.1.0"
   },
   "devDependencies": {
-    "jest": "^24.9.0",
-    "jest-watch-typeahead": "^0.2.1",
     "prettier": "^3.9.4",
     "prettier-plugin-jsdoc": "1.8.1",
     "prettier-plugin-packagejson": "3.0.2"
