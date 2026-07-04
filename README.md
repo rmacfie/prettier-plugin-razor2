@@ -10,14 +10,14 @@
 <br>
 
 An opinionated formatter plugin for [Prettier](https://prettier.io) that adds
-support for Razor files (Blazor code).
+support for Razor files — `.razor` (Blazor components) and `.cshtml` (MVC views
+and Razor Pages).
 
 Prettier is an opinionated code formatter. It enforces a consistent style by
 parsing your code and re-printing it, taking various rules into account.
 
 > **Fork notice** This project is a fork of
-> [prettier-plugin-razor](https://github.com/KristinaPlusPlus/prettier-plugin-razor)
-> by Kristina Corrado. It is currently maintained by Robert Macfie.
+> [prettier-plugin-razor](https://github.com/KristinaPlusPlus/prettier-plugin-razor).
 
 # Notice
 
@@ -69,8 +69,12 @@ or a dynamic `class="@GetCss()"` value) are not sorted.
 # Configuration
 
 This library follows the same configuration format as Prettier, which is
-documented [here](https://prettier.io/docs/en/configuration.html). However, at
-this time, there are no configuration options enabled.
+documented [here](https://prettier.io/docs/en/configuration.html). It adds one
+option:
+
+| Option             | Default              | Description                                                                             |
+| ------------------ | -------------------- | --------------------------------------------------------------------------------------- |
+| `csharpierCommand` | `"dotnet csharpier"` | Command used to format embedded C# via CSharpier. Set to `""` to disable C# formatting. |
 
 # Development
 
@@ -83,4 +87,5 @@ JavaScript in `dist/`.
     pnpm build          # compile src/ to dist/
 
 Tests run the TypeScript sources directly via Node's native type stripping, so
-no build step is required to develop or test.
+no build step is required to develop or test. The C# tests need the CSharpier
+CLI (`dotnet tool restore`); they skip automatically when it isn't available.
