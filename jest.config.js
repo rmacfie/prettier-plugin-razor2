@@ -3,7 +3,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.js',
     '!<rootDir>/node_modules/',
-    '!src/prettier-comments/**/*.js'
+    '!src/prettier-comments/**/*.js',
   ],
   coverageDirectory: './coverage/',
   setupFiles: ['<rootDir>/tests_config/run_spec.js'],
@@ -13,6 +13,6 @@ module.exports = {
   transform: {},
   watchPlugins: [
     'jest-watch-typeahead/filename',
-    'jest-watch-typeahead/testname'
-  ]
+    'jest-watch-typeahead/testname',
+  ],
 };

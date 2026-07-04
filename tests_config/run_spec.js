@@ -7,7 +7,7 @@ const path = require('path');
 const prettier = require('prettier');
 
 function run_spec(dirname, options) {
-  fs.readdirSync(dirname).forEach(filename => {
+  fs.readdirSync(dirname).forEach((filename) => {
     const filepath = dirname + '/' + filename;
     if (
       path.extname(filename) !== '.snap' &&
@@ -38,12 +38,12 @@ function run_spec(dirname, options) {
         filepath,
         rangeStart,
         rangeEnd,
-        cursorOffset
+        cursorOffset,
       });
       const output = prettyprint(input, mergedOptions);
       test(filename, () => {
         expect(
-          raw(source + '~'.repeat(mergedOptions.printWidth) + '\n' + output)
+          raw(source + '~'.repeat(mergedOptions.printWidth) + '\n' + output),
         ).toMatchSnapshot();
       });
     }
@@ -83,8 +83,8 @@ function mergeDefaultOptions(parserConfig) {
   return Object.assign(
     {
       plugins: [path.dirname(__dirname)],
-      printWidth: 80
+      printWidth: 80,
     },
-    parserConfig
+    parserConfig,
   );
 }

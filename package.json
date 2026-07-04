@@ -2,25 +2,21 @@
   "name": "prettier-plugin-razor2",
   "version": "1.0.0",
   "description": "Prettier plugin for Razor (Blazor) files — a fork of prettier-plugin-razor",
-  "main": "src/index.js",
-  "scripts": {
-    "example": "prettier --plugin ./src/index.js example.razor",
-    "test": "jest"
-  },
   "keywords": [
     "prettier",
     "razor",
     "blazor",
     "plugin"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/rmacfie/prettier-plugin-razor2.git"
-  },
   "homepage": "https://github.com/rmacfie/prettier-plugin-razor2#readme",
   "bugs": {
     "url": "https://github.com/rmacfie/prettier-plugin-razor2/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rmacfie/prettier-plugin-razor2.git"
+  },
+  "license": "MIT",
   "author": {
     "name": "Robert Macfie",
     "email": "robert@macfie.se"
@@ -31,9 +27,11 @@
       "url": "https://github.com/KristinaPlusPlus/prettier-plugin-razor"
     }
   ],
-  "license": "UNLICENSED",
-  "peerDependencies": {
-    "prettier": "^3.0.0"
+  "main": "src/index.js",
+  "scripts": {
+    "example": "prettier --plugin ./src/index.js example.razor",
+    "format": "prettier --write .",
+    "test": "jest"
   },
   "dependencies": {
     "void-elements": "^3.1.0"
@@ -41,7 +39,12 @@
   "devDependencies": {
     "jest": "^24.9.0",
     "jest-watch-typeahead": "^0.2.1",
-    "prettier": "^3.9.4"
+    "prettier": "^3.9.4",
+    "prettier-plugin-jsdoc": "1.8.1",
+    "prettier-plugin-packagejson": "3.0.2"
+  },
+  "peerDependencies": {
+    "prettier": "^3.0.0"
   },
   "devEngines": {
     "runtime": {
