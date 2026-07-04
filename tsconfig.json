@@ -1,5 +1,6 @@
 {
-  "include": ["src"],
+  // Base config: type-checks the whole project (src + tests) without emitting.
+  // `tsconfig.dist.json` extends this to build the published package.
   "compilerOptions": {
     "target": "esnext",
     "module": "nodenext",
@@ -7,11 +8,10 @@
     "lib": ["esnext"],
     "types": ["node"],
 
+    "noEmit": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "dist",
-    "rootDir": "src",
 
     // Author with explicit `.ts` specifiers (needed for Node's native TS
     // execution) and let tsc rewrite them to `.js` in the emitted output.
@@ -37,5 +37,6 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["dist"]
 }

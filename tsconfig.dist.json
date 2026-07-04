@@ -1,0 +1,10 @@
+{
+  // Build config for the published package: emits src/ -> dist/.
+  "extends": "./tsconfig.json",
+  "include": ["src"],
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  }
+}
