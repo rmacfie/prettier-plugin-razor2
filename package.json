@@ -44,6 +44,7 @@
     "clean": "rm -rf dist",
     "example": "prettier --plugin ./src/index.ts example.razor",
     "format": "prettier --write .",
+    "node": "node",
     "prepublishOnly": "pnpm run clean && pnpm run build",
     "test": "node --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"
