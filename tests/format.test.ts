@@ -127,6 +127,19 @@ test('does not mangle C# containing braces and strings', async () => {
   assert.equal(await format(source), source + '\n');
 });
 
+test('handles @code blocks before, after and around markup', async () => {
+  // Regression: the old formatter grabbed the first @code to EOF, swallowing
+  // any markup after it and mishandling a @code before markup.
+  assert.equal(
+    await format('@code {\n  int A;\n}\n<h1>Hi</h1>\n@code {\n  int B;\n}'),
+    '@code {\n  int A;\n}\n<h1>Hi</h1>\n@code {\n  int B;\n}\n',
+  );
+  assert.equal(
+    await format('<h1>Hi</h1>\n@code {\n  int X;\n}\n<p>Bye</p>'),
+    '<h1>Hi</h1>\n@code {\n  int X;\n}\n<p>Bye</p>\n',
+  );
+});
+
 // --- Full fixture ----------------------------------------------------------
 
 test('formats the full component fixture', async () => {
