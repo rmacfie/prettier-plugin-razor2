@@ -6,7 +6,7 @@ compiled ESM package; authored in TypeScript.
 ## Node version
 
 The Node version is pinned via `devEngines` in `package.json` (currently
-24.18.0). The system `node` on this machine is a different (newer) version, so
+26.4.0). If the system `node` differs from the pinned version,
 **always invoke Node through the pinned version** to match what `pnpm` scripts
 and CI use:
 
@@ -47,19 +47,27 @@ and the mask/format/restore pipeline are in [DESIGN.md](DESIGN.md).
   with Prettier HTML (`textToDoc(..., { parser: 'html' })` + `printDocToString`)
   → `restore` the masked constructs, recursing into control-block bodies.
 - `src/scan.ts` — `mask()` plus the C#/markup-aware brace matching that finds
-  each construct's extent. Replaces `@code`/`@{}`, control-flow blocks and
-  directive lines with `<div data-razor="N"></div>` placeholders.
+  each construct's extent. Block constructs (`@code`/`@{}`, control-flow blocks,
+  line-start directives) become `<div data-razor="N"></div>` placeholders;
+  inline constructs (explicit `@(…)`, `@* *@` comments) become private-use text
+  tokens so they don't force a line break.
 - `src/csharp.ts` — pipes C# through CSharpier (`dotnet csharpier`), stdin →
   stdout, with a verbatim fallback on any failure.
 
-Inline expressions, razor attributes, razor/HTML comments and components are NOT
-masked — Prettier's HTML formatter handles them correctly on its own.
+Implicit expressions, razor attributes, `@@`, emails, HTML comments and
+components are NOT masked — Prettier handles them. Explicit `@(…)` expressions
+and razor comments ARE masked (they can contain `<`/generics or HTML that
+Prettier would mangle). Directives are only masked at the start of a line.
 
 ## Testing
 
-- Tests live in `tests/*.test.ts`, run with the built-in `node --test` runner
-  (no Jest). They assert exact formatted output (input string -> expected
-  string); fixtures are in `tests/fixtures/`.
+- Tests live in `tests/*.test.ts`, one file per construct category, sharing
+  `tests/support.ts` (the `format` helper, `expectIdempotent`, CSharpier
+  detection). Run with the built-in `node --test` runner (no Jest).
+- The tests target _our_ mechanics — correctly finding the start/end of each
+  construct and integrating cleanly — not whether Prettier/CSharpier format
+  correctly (assume they do). Cover content preservation, brace/boundary edge
+  cases, and idempotency (`format(format(x)) === format(x)`).
 - C# tests require `dotnet csharpier` (installed here as `pnpm csharpier`). They
   detect its absence and `skip` (rather than fail) — check the run summary for
   skips if you don't have it.

@@ -3,7 +3,7 @@
 import { doc, type Doc } from 'prettier';
 
 import { formatCSharp, type RazorOptions } from './csharp.ts';
-import { mask, type RazorBlock } from './scan.ts';
+import { INLINE_CLOSE, INLINE_OPEN, mask, type RazorBlock } from './scan.ts';
 
 type Options = RazorOptions;
 
@@ -15,6 +15,10 @@ type TextToDoc = (text: string, options: Options) => Promise<Doc>;
 // (block-level) and inline ones Prettier chose not to break. Constructed fresh
 // per call — `restore` recurses, so a shared /g regex's lastIndex would clash.
 const placeholderRE = (): RegExp => /([ \t]*)<div data-razor="(\d+)"><\/div>/g;
+
+// Matches inline placeholder tokens; constructed fresh per call (see above).
+const inlineRE = (): RegExp =>
+  new RegExp(`${INLINE_OPEN}(\\d+)${INLINE_CLOSE}`, 'g');
 
 function indentUnit(options: Options): string {
   return options.useTabs ? '\t' : ' '.repeat(options.tabWidth ?? 2);
@@ -41,6 +45,8 @@ async function renderBlock(
   options: Options,
 ): Promise<string> {
   switch (block.kind) {
+    case 'inline': // resolved separately via resolveInline; here for safety
+      return indent + block.text;
     case 'directive':
       return indent + block.text;
     case 'verbatim': {
@@ -113,5 +119,15 @@ export async function formatDocument(
     endOfLine: 'lf',
   } as never).formatted;
 
-  return blocks.length === 0 ? html : restore(html, blocks, textToDoc, options);
+  if (blocks.length === 0) return html;
+  const restored = await restore(html, blocks, textToDoc, options);
+  return resolveInline(restored, blocks);
+}
+
+// Replace inline placeholder tokens with their verbatim originals.
+function resolveInline(text: string, blocks: RazorBlock[]): string {
+  return text.replace(inlineRE(), (whole, id: string) => {
+    const block = blocks[Number(id)];
+    return block?.kind === 'inline' ? block.text : whole;
+  });
 }

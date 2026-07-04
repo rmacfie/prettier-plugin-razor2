@@ -13,46 +13,54 @@ printer that re-indented markup itself and never understood HTML semantics).
 
 Prettier's HTML formatter already tolerates most Razor syntax as-is. Verified:
 
-| Construct                             | Prettier `parser: "html"` result      |
-| ------------------------------------- | ------------------------------------- |
-| Inline expression `<td>@Model.X</td>` | preserved                             |
-| Text + expression `Hello @Name`       | preserved, spacing correct            |
-| Razor attributes `@onclick`, `@bind`  | preserved                             |
-| Attribute value `value="@x"`          | preserved                             |
-| Directives `@page "/x"`, `@inject`    | preserved (unless they contain `<`)   |
-| Razor comment `@* … *@`               | preserved                             |
-| Components `<MyComponent Id="1" />`   | preserved                             |
-| **`@code { … }` / `@{ … }`**          | **C# collapsed/mangled** — must mask  |
-| **`@if/@for/@foreach { … }`**         | **braces not structured** — must mask |
+| Construct                               | Prettier `parser: "html"` result         |
+| --------------------------------------- | ---------------------------------------- |
+| Implicit expression `<td>@Model.X</td>` | preserved                                |
+| Text + expression `Hello @Name`         | preserved, spacing correct               |
+| Razor attributes `@onclick`, `@bind`    | preserved                                |
+| Attribute value `value="@x"`            | preserved                                |
+| `@@` escape, email `a@b.com`            | preserved                                |
+| Components `<MyComponent Id="1" />`     | preserved                                |
+| **Explicit expr `@(Foo<int>())`**       | **`<int>` parsed as a tag — must mask**  |
+| **Razor comment `@* <p/> *@`**          | **inner markup reformatted — must mask** |
+| **`@code { … }` / `@{ … }`**            | **C# collapsed/mangled — must mask**     |
+| **`@if/@for/@foreach { … }`**           | **braces not structured — must mask**    |
+| **Directive `@inherits Base<T>`**       | **`<T>` parsed as a tag — must mask**    |
 
-So only two categories need special handling; everything else rides on
-Prettier's HTML formatter for free.
+Implicit expressions, razor attributes, `@@`, emails, HTML comments and
+components ride on Prettier for free; everything in bold is masked.
 
 ## Pipeline
 
 `format(source)` is an async, recursive, string-in/string-out transform:
 
 1. **Mask** — walk the source and replace each construct Prettier can't handle
-   with a block-level placeholder element `<div data-razor="N"></div>`,
-   recording the original in a side table. Constructs masked:
-   - **Verbatim blocks** (C# kept as-is): `@code { }`, `@functions { }`, `@{ }`.
-   - **Control blocks** (bodies are markup, recursed): `@if / else if / else`,
-     `@for`, `@foreach`, `@while`, `@do … while`, `@switch`, `@using (…) { }`,
-     `@lock (…) { }`, `@try / catch / finally`, `@section Name { }`.
-   - **Directive lines** (kept verbatim; masked so generics like
-     `@inherits Base<T>` aren't parsed as HTML): `@page`, `@using` (no parens),
-     `@inject`, `@inherits`, `@namespace`, `@implements`, `@attribute`,
-     `@layout`, `@typeparam`, `@model`, `@rendermode`, `@addTagHelper`, …
+   with a placeholder, recording the original in a side table. Two placeholder
+   shapes:
+   - **Block placeholders** `<div data-razor="N"></div>` (own line): the code
+     blocks `@code { }`, `@functions { }`, `@{ }`; the control blocks
+     `@if / else if / else`, `@for`, `@foreach`, `@while`, `@do … while`,
+     `@switch`, `@using (…) { }`, `@lock (…) { }`, `@try / catch / finally`,
+     `@section Name { }`; and **directive lines** — `@page`, `@using` (no
+     parens), `@inject`, `@inherits`, `@namespace`, `@implements`, `@attribute`,
+     `@layout`, `@typeparam`, `@model`, `@rendermode`, `@addTagHelper`, … only
+     when they start a line (so `foo@using.com` and mid-text uses are
+     untouched).
+   - **Inline placeholders** (a private-use text token that stays in the flow):
+     explicit `@(…)` expressions and `@* … *@` razor comments.
 
-   Inline expressions, razor attributes, razor/HTML comments and components are
-   **left in place** — Prettier handles them.
+   The scanner skips `@@` escapes and doesn't scan inside HTML comments;
+   implicit expressions, razor attributes and components are **left in place** —
+   Prettier handles them.
 
 2. **Format as HTML** — run the masked source through Prettier's HTML printer
-   (`textToDoc(masked, { parser: "html" })` → `printDocToString`). Placeholders,
-   being block elements, land on their own lines at the correct indentation.
+   (`textToDoc(masked, { parser: "html" })` → `printDocToString`). Block
+   placeholders, being `<div>`s, land on their own lines at the correct
+   indentation; inline tokens ride along as text.
 
-3. **Restore** — for each placeholder line, read its indentation and render the
-   recorded construct there:
+3. **Restore** — replace each block placeholder (reading its indentation) and
+   then each inline token:
+   - _Inline token_ (`@(…)`, `@* … *@`): emitted verbatim.
    - _Code block_ (`@code`/`@functions`/`@{ }`): the C# is formatted with
      CSharpier (see below) and re-indented to match; on any failure it is kept
      verbatim.

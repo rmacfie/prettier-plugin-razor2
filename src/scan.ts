@@ -1,8 +1,15 @@
 // Scans Razor source and masks the constructs Prettier's HTML formatter can't
-// handle (code blocks, control-flow blocks, directive lines) with block-level
-// placeholders, recording the originals for later restoration. See DESIGN.md.
+// handle. Block-level constructs (code/control blocks, directive lines) become
+// `<div data-razor="N"></div>` placeholders; inline constructs (explicit `@(…)`
+// expressions and razor comments) become `N` text tokens so they
+// survive HTML formatting without forcing a line break. Originals are recorded
+// for later restoration. See DESIGN.md.
 
 import type { CSharpKind } from './csharp.ts';
+
+/** Delimiters for inline placeholder tokens (Unicode private-use area). */
+export const INLINE_OPEN = '\uE000';
+export const INLINE_CLOSE = '\uE001';
 
 /** A `@code { }`, `@functions { }` or `@{ }` block holding C#. */
 export interface VerbatimBlock {
@@ -39,7 +46,18 @@ export interface ControlBlock {
   trailer?: string;
 }
 
-export type RazorBlock = VerbatimBlock | DirectiveLine | ControlBlock;
+/**
+ * An inline construct kept verbatim: an explicit `@(…)` expression (which may
+ * contain `<`/generics that HTML parsing would mangle) or a `@* … *@` comment
+ * (whose contents Prettier would otherwise reformat).
+ */
+export interface InlineBlock {
+  kind: 'inline';
+  text: string;
+}
+
+export type RazorBlock =
+  VerbatimBlock | DirectiveLine | ControlBlock | InlineBlock;
 
 export interface MaskResult {
   masked: string;
@@ -93,6 +111,15 @@ function readIdent(src: string, i: number): string {
   let j = i;
   while (j < src.length && isLetter(src[j])) j++;
   return src.slice(i, j);
+}
+
+// Whether `i` is the first non-whitespace position on its line. Directives are
+// line-level, so this distinguishes `@using X` (directive) from an `@using`
+// that appears mid-text or inside an email like `foo@using.com`.
+function atLineStart(src: string, i: number): boolean {
+  let j = i - 1;
+  while (j >= 0 && (src[j] === ' ' || src[j] === '\t')) j--;
+  return j < 0 || src[j] === '\n';
 }
 
 // Index just past `needle`, starting at `from`.
@@ -350,8 +377,12 @@ function parseControl(
 /** Replace Razor block constructs with placeholders; see {@link MaskResult}. */
 export function mask(src: string): MaskResult {
   const blocks: RazorBlock[] = [];
-  const placeholder = (block: RazorBlock): string =>
+  // Block placeholder: its own line, indent-aware on restore.
+  const blockPlaceholder = (block: RazorBlock): string =>
     `<div data-razor="${blocks.push(block) - 1}"></div>`;
+  // Inline placeholder: a text token that stays in the flow.
+  const inlinePlaceholder = (block: RazorBlock): string =>
+    `${INLINE_OPEN}${blocks.push(block) - 1}${INLINE_CLOSE}`;
 
   let out = '';
   let i = 0;
@@ -360,13 +391,15 @@ export function mask(src: string): MaskResult {
   while (i < n) {
     const c = src[i]!;
 
-    // Pass comments through untouched (and don't scan inside them).
+    // `@* … *@` razor comment — mask inline so its (possibly HTML-like)
+    // contents aren't reformatted.
     if (c === '@' && src[i + 1] === '*') {
       const end = skipUntil(src, i + 2, '*@');
-      out += src.slice(i, end);
+      out += inlinePlaceholder({ kind: 'inline', text: src.slice(i, end) });
       i = end;
       continue;
     }
+    // HTML comment — Prettier preserves it; pass through and don't scan inside.
     if (src.startsWith('<!--', i)) {
       const end = skipUntil(src, i + 4, '-->');
       out += src.slice(i, end);
@@ -387,10 +420,19 @@ export function mask(src: string): MaskResult {
       continue;
     }
 
+    // `@( … )` explicit expression — mask inline; it may contain generics or
+    // `<` that HTML parsing would mangle.
+    if (src[i + 1] === '(') {
+      const end = matchParen(src, i + 1);
+      out += inlinePlaceholder({ kind: 'inline', text: src.slice(i, end) });
+      i = end;
+      continue;
+    }
+
     // `@{ ... }` code block (statements).
     if (src[i + 1] === '{') {
       const end = matchBraceCSharp(src, i + 1);
-      out += placeholder({
+      out += blockPlaceholder({
         kind: 'verbatim',
         opener: '@{',
         body: src.slice(i + 2, end - 1),
@@ -408,7 +450,7 @@ export function mask(src: string): MaskResult {
       const bracePos = skipWs(src, i + 1 + kw.length);
       if (src[bracePos] === '{') {
         const end = matchBraceCSharp(src, bracePos);
-        out += placeholder({
+        out += blockPlaceholder({
           kind: 'verbatim',
           opener: `@${kw} {`,
           body: src.slice(bracePos + 1, end - 1),
@@ -424,17 +466,18 @@ export function mask(src: string): MaskResult {
     if (CONTROL.has(kw)) {
       const parsed = parseControl(src, i, kw);
       if (parsed) {
-        out += placeholder(parsed.block);
+        out += blockPlaceholder(parsed.block);
         i = parsed.end;
         continue;
       }
     }
 
-    // Single-line directives.
-    if (DIRECTIVES.has(kw)) {
+    // Single-line directives — only at the start of a line, so mid-text uses
+    // and emails (`foo@using.com`) aren't misread as directives.
+    if (DIRECTIVES.has(kw) && atLineStart(src, i)) {
       let end = src.indexOf('\n', i);
       if (end === -1) end = n;
-      out += placeholder({
+      out += blockPlaceholder({
         kind: 'directive',
         text: src.slice(i, end).trimEnd(),
       });
