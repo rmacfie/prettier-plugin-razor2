@@ -69,6 +69,19 @@ test('keeps a code block with embedded markup verbatim', async () => {
   assert.equal(await format(stmts), stmts + '\n');
 });
 
+test('matches braces past strings, incl. raw string literals', async () => {
+  // The raw string content mixes a stray quote with a brace; block-end
+  // detection must still stop at the real closing `}` and leave the trailing
+  // markup outside the block. (Holds with or without CSharpier.)
+  const out = await format(
+    '@code {\nconst string A = """x"{""";\n}\n<footer>end</footer>',
+  );
+  assert.match(out, /<footer>end<\/footer>/);
+  await expectIdempotent(
+    '@code {\nconst string A = """x"{""";\n}\n<footer>end</footer>',
+  );
+});
+
 test('handles @code blocks before, after and around markup', async () => {
   // Regression: the old formatter grabbed the first @code to EOF.
   assert.equal(

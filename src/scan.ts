@@ -131,6 +131,26 @@ function skipUntil(src: string, from: number, needle: string): number {
 // If `i` starts a C# string/char/comment, return the index just past it; else -1.
 function skipCSharpToken(src: string, i: number): number {
   const c = src[i];
+  // Raw string literal: an opening run of 3+ double quotes closed by a run of at
+  // least the same length. Everything between — braces, shorter quote runs,
+  // newlines, `$`-interpolations — is opaque. (The optional `$`/`$$` prefix is a
+  // plain char to the caller, which then reaches these quotes.)
+  if (c === '"' && src[i + 1] === '"' && src[i + 2] === '"') {
+    let openLen = 0;
+    while (src[i + openLen] === '"') openLen++;
+    let j = i + openLen;
+    while (j < src.length) {
+      if (src[j] !== '"') {
+        j++;
+        continue;
+      }
+      let runLen = 0;
+      while (src[j + runLen] === '"') runLen++;
+      if (runLen >= openLen) return j + openLen;
+      j += runLen;
+    }
+    return src.length;
+  }
   if (c === '@' && src[i + 1] === '"') {
     let j = i + 2;
     while (j < src.length) {

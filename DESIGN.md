@@ -123,7 +123,8 @@ verbatim C#:
 Finding a construct's closing `}` requires scanning past braces that appear
 inside strings and comments:
 
-- **C# bodies** (`@code`, `@{ }`): skip `"…"`, `@"…"`, `'…'`, `//`, `/* */`.
+- **C# bodies** (`@code`, `@{ }`): skip `"…"`, `@"…"`, `"""…"""` raw strings
+  (incl. interpolated `$"""…"""` / `$$"""…"""`), `'…'`, `//`, `/* */`.
 - **Markup bodies** (control blocks): skip `"…"`, `'…'`, `<!-- -->`, `@* *@`,
   and recurse C#-style over nested `@{ }` / `@code` / `@( )` so their inner
   braces don't miscount.
@@ -147,4 +148,8 @@ covers both.
   (`@if(x){<tr>}…{</tr>}`) can't be delegated to the HTML formatter, and markup
   mixed into a `@{ }`/`@code` block makes CSharpier fall back to verbatim.
 - Literal `{`/`}` in bare markup text may confuse brace matching.
+- An interpolated **non-raw** string whose interpolation contains a nested
+  string literal with an unbalanced brace (e.g. `$"{(b ? "{" : "x")}"`) can
+  miscount braces — matching this needs a full recursive C# lexer. Raw strings
+  (`"""…"""`, incl. interpolated) and ordinary interpolations are handled.
 - A block construct used in an inline context is promoted to its own line.

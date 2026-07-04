@@ -92,6 +92,10 @@ the `html` parser (e.g. prettier-plugin-tailwindcss) compose with this one.
 - A construct whose body splits an HTML element across blocks
   (`@if(x){<tr>}…{</tr>}`) can't be delegated to the HTML formatter.
 - Literal `{`/`}` in bare markup text may confuse brace matching.
+- Brace matching skips C# strings/comments including raw strings (`"""…"""`),
+  but an interpolated non-raw string with a nested string containing an
+  unbalanced brace (`$"{(b ? "{" : "x")}"`) can still miscount — needs a full C#
+  lexer, deemed not worth it.
 - A block construct written with no surrounding whitespace (e.g.
   `<div>@{...}</div>`) stays inline — this mirrors Prettier's HTML whitespace
   sensitivity and is intentional.
