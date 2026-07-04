@@ -49,3 +49,17 @@ Prettier [CLI usage docs](https://prettier.io/docs/en/cli.html)<br> Prettier
 This library follows the same configuration format as Prettier, which is
 documented [here](https://prettier.io/docs/en/configuration.html). However, at
 this time, there are no configuration options enabled.
+
+# Development
+
+The plugin is written in TypeScript in `src/` and published as compiled
+JavaScript in `dist/`.
+
+    pnpm install        # install dependencies
+    pnpm test           # run the test suite (node --test)
+    pnpm typecheck      # type-check without emitting
+    pnpm build          # compile src/ to dist/
+    pnpm example        # format example.razor with the plugin
+
+Tests and the `example` script run the TypeScript sources directly via Node's
+native type stripping, so no build step is required to develop or test.
