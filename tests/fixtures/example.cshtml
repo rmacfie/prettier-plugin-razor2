@@ -1,0 +1,41 @@
+@page
+@model ProductListModel
+@using MyApp.Models
+@{
+ViewData["Title"]="Products";
+var count=Model.Products.Count;
+}
+
+<h1>@ViewData["Title"]</h1>
+<p>Showing @count product(s).</p>
+
+@if (count == 0)
+{
+<p>No products found.</p>
+}
+else
+{
+<table class="table">
+<thead>
+<tr>
+<th>Name</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody>
+@foreach (var product in Model.Products)
+{
+<tr>
+<td>@product.Name</td>
+<td>@(product.Price.ToString("C"))</td>
+</tr>
+}
+</tbody>
+</table>
+}
+
+<partial name="_Footer" />
+
+@section Scripts {
+<script src="~/js/products.js"></script>
+}

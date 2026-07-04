@@ -36,19 +36,16 @@ entirely — with the `csharpierCommand` option (set it to `""` to disable).
 
 # Installation
 
-yarn:
-
-    yarn add --dev prettier prettier-plugin-razor2 --exact
-
-npm:
-
-    npm install prettier prettier-plugin-razor2 --save-dev --save-exact
+    npm install --save-dev prettier prettier-plugin-razor2
 
 # Usage
 
 This plugin will be loaded automatically (if installed) by prettier to format
-files ending with the `.razor` suffix. Using it is exactly the same as using
-prettier.
+files ending with `.razor` (Blazor components) or `.cshtml` (MVC views / Razor
+Pages). Using it is exactly the same as using prettier.
+
+Known limitation: templated Razor delegates (`.cshtml`), e.g.
+`@Repeat(items, @<li>@item.Name</li>)`, are preserved but not reformatted.
 
 Prettier [CLI usage docs](https://prettier.io/docs/en/cli.html)<br> Prettier
 [API usage docs](https://prettier.io/docs/en/api.html)

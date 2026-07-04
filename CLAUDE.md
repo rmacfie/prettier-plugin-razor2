@@ -1,14 +1,14 @@
 # CLAUDE.md
 
-Prettier v3 plugin that formats Razor / Blazor (`.razor`) files. Published as a
-compiled ESM package; authored in TypeScript.
+Prettier v3 plugin that formats Razor files — `.razor` (Blazor components) and
+`.cshtml` (MVC views / Razor Pages). Published as a compiled ESM package;
+authored in TypeScript.
 
 ## Node version
 
 The Node version is pinned via `devEngines` in `package.json` (currently
-26.4.0). If the system `node` differs from the pinned version,
-**always invoke Node through the pinned version** to match what `pnpm` scripts
-and CI use:
+26.4.0). If the system `node` differs from the pinned version, **always invoke
+Node through the pinned version** to match what `pnpm` scripts and CI use:
 
     pnpm run node <args>        # e.g. pnpm run node --test "tests/**/*.test.ts"
 
@@ -76,6 +76,9 @@ Prettier would mangle). Directives are only masked at the start of a line.
 
 ## Known limitations (not bugs to "fix" incidentally)
 
+- Templated Razor delegates (`.cshtml`): `@<tag>…</tag>` (e.g.
+  `@Repeat(items, @<li>@item.Name</li>)`) isn't recognized and reflows awkwardly
+  (content preserved, idempotent, just ugly).
 - Control-flow conditions and inline expressions aren't run through CSharpier;
   only `@code`/`@functions`/`@{ }` block bodies are.
 - A construct whose body splits an HTML element across blocks

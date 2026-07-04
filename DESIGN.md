@@ -115,8 +115,19 @@ inside strings and comments:
   and recurse C#-style over nested `@{ }` / `@code` / `@( )` so their inner
   braces don't miscount.
 
+## `.razor` vs `.cshtml`
+
+Both extensions are handled by the same parser — the Razor grammar is identical;
+only the set of valid directives/features differs (`@code`/`@rendermode` in
+components; `@model`/`@section`/Tag Helpers in MVC/Pages views). The scanner
+covers both.
+
 ## Known limitations
 
+- **Templated Razor delegates** (`.cshtml`): the `@<tag>…</tag>` transition
+  (e.g. `@Repeat(items, @<li>@item.Name</li>)`) isn't recognized, so the markup
+  is reflowed awkwardly. Content is preserved and the result is stable, just not
+  pretty.
 - Control-flow **conditions** (`@if (x)`) and inline expressions (`@(a+b)`) are
   not run through CSharpier — only the block bodies are.
 - A construct whose body splits an HTML element across blocks

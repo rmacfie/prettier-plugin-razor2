@@ -6,11 +6,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import prettier from 'prettier';
+
 import {
   csharpierSkip,
   expectIdempotent,
   fixturesDir,
   format,
+  pluginPath,
 } from './support.ts';
 
 test(
@@ -59,6 +62,71 @@ test('is idempotent across construct categories', async () => {
     '@code {\n  public int X { get; set; }\n}',
     '<div>@{ var x = 1; }</div>',
     '<div>@* @if (x) { <p>a</p> } *@</div>',
+    fs.readFileSync(path.join(fixturesDir, 'example.cshtml'), 'utf8'),
   ];
   for (const source of sources) await expectIdempotent(source);
+});
+
+test(
+  'formats the full .cshtml view fixture',
+  { skip: csharpierSkip },
+  async () => {
+    const source = fs.readFileSync(
+      path.join(fixturesDir, 'example.cshtml'),
+      'utf8',
+    );
+    const expected = `@page
+@model ProductListModel
+@using MyApp.Models
+@{
+  ViewData["Title"] = "Products";
+  var count = Model.Products.Count;
+}
+
+<h1>@ViewData["Title"]</h1>
+<p>Showing @count product(s).</p>
+
+@if (count == 0)
+{
+  <p>No products found.</p>
+}
+else
+{
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      @foreach (var product in Model.Products)
+      {
+        <tr>
+          <td>@product.Name</td>
+          <td>@(product.Price.ToString("C"))</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+<partial name="_Footer" />
+
+@section Scripts
+{
+  <script src="~/js/products.js"></script>
+}
+`;
+    assert.equal(await format(source), expected);
+  },
+);
+
+test('selects the plugin from a .cshtml file extension', async () => {
+  // No explicit parser — Prettier infers it from the extension.
+  const out = await prettier.format('<div>@if (a)\n{\n<p>x</p>\n}</div>', {
+    plugins: [pluginPath],
+    filepath: 'View.cshtml',
+  });
+  assert.equal(out, '<div>@if (a)\n{\n  <p>x</p>\n}</div>\n');
 });

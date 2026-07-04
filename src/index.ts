@@ -20,8 +20,10 @@ export const languages: SupportLanguage[] = [
   {
     name: 'Razor',
     parsers: ['razor'],
-    extensions: ['.razor'],
-    vscodeLanguageIds: ['razor'],
+    // .razor = Blazor components; .cshtml = MVC views / Razor Pages. Same
+    // grammar, so both use this parser.
+    extensions: ['.razor', '.cshtml'],
+    vscodeLanguageIds: ['razor', 'aspnetcorerazor'],
   },
 ];
 

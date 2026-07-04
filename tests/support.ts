@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import prettier from 'prettier';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const pluginPath = path.resolve(here, '..', 'src', 'index.ts');
+export const pluginPath = path.resolve(here, '..', 'src', 'index.ts');
 
 export const fixturesDir = path.join(here, 'fixtures');
 
