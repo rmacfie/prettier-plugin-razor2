@@ -59,6 +59,16 @@ test('falls back to verbatim when C# cannot be parsed', async () => {
   assert.equal(await format(source), source + '\n');
 });
 
+test('keeps a code block with embedded markup verbatim', async () => {
+  // Templating methods / markup transitions aren't valid stand-alone C#, so
+  // CSharpier can't format them — we keep the block verbatim either way (so no
+  // CSharpier dependency).
+  const member = '@functions {\nvoid R(string n){\n<p>@n</p>\n}\n}';
+  assert.equal(await format(member), member + '\n');
+  const stmts = '@{\nvar x = 1;\n<p>@x</p>\n}';
+  assert.equal(await format(stmts), stmts + '\n');
+});
+
 test('handles @code blocks before, after and around markup', async () => {
   // Regression: the old formatter grabbed the first @code to EOF.
   assert.equal(

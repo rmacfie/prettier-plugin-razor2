@@ -36,6 +36,13 @@ test('does not treat a mid-text keyword as a directive', async () => {
   );
 });
 
+test('protects an @model directive with generics (.cshtml)', async () => {
+  assert.equal(
+    await format('@model List<Foo>\n<h1>Hi</h1>'),
+    '@model List<Foo>\n<h1>Hi</h1>\n',
+  );
+});
+
 test('is idempotent', async () => {
   await expectIdempotent('@page "/x"\n@inherits Base<T>\n<h1>Hi</h1>');
 });

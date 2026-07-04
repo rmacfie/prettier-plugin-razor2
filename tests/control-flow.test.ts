@@ -99,7 +99,15 @@ test('does not treat @forecast as control flow (whole-word match)', async () => 
   );
 });
 
+test('handles an @section block (.cshtml)', async () => {
+  assert.equal(
+    await format('@section Scripts {\n<script src="a.js"></script>\n}'),
+    '@section Scripts\n{\n  <script src="a.js"></script>\n}\n',
+  );
+});
+
 test('is idempotent', async () => {
   await expectIdempotent('@if (a) {\n<p>y</p>\n} else {\n<p>n</p>\n}');
   await expectIdempotent('@try\n{\n<p>t</p>\n}\nfinally\n{\n<p>f</p>\n}');
+  await expectIdempotent('@section Nav {\n<li>x</li>\n}');
 });
