@@ -1,16 +1,63 @@
-<div class="alert alert-secondary mt-4" role="alert">
-    <span class="oi oi-pencil mr-2" aria-hidden="true"></span>
-    <strong>@Title</strong>
+@page "/dashboard/{Section?}"
+@using System.Linq
+@using MyApp.Models
+@inject IWeatherService Weather
+@implements IDisposable
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
 
-    <span class="text-nowrap">
-        Please take our
-        <a target="_blank" class="font-weight-bold" href="https://go.microsoft.com/fwlink/?linkid=2127996">brief survey</a>
-    </span>
-    and tell us what you think.
-</div>
+<PageTitle>Dashboard</PageTitle>
+
+@* Header, a two-way bound filter, and a refresh button. *@
+<section class="dashboard">
+  <h1>Welcome, @user.Name!</h1>
+
+  <input @bind="filter" @bind:event="oninput" placeholder="Filter..." />
+  <button class="btn" @onclick="Refresh">Refresh</button>
+
+  @if (forecasts is null)
+  {
+    <p><em>Loading...</em></p>
+  }
+  else if (!forecasts.Any())
+  {
+    <p>No data for @(Section ?? "today").</p>
+  }
+  else
+  {
+    <table class="table">
+      <tbody>
+        @foreach (var f in forecasts.Where(f => f.TemperatureC > 0))
+        {
+          <tr @key="f.Date">
+            <td>@f.Date.ToShortDateString()</td>
+            <td>@f.TemperatureC &deg;C</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</section>
+
+<ChildComponent Title="Details" OnSave="HandleSave" @ref="child" />
 
 @code {
-    // Demonstrates how a parent component can supply parameters
-    [Parameter]
-    public string Title { get; set; }
+  [Parameter]
+  public string? Section { get; set; }
+
+  private WeatherForecast[]? forecasts;
+  private string filter = "";
+  private User user = new("Guest");
+  private ChildComponent? child;
+
+  protected override async Task OnInitializedAsync()
+  {
+    forecasts = await Weather.GetForecastsAsync(Section);
+  }
+
+  private void Refresh() => forecasts = null;
+
+  private Task HandleSave(FormModel model) => Weather.SaveAsync(model);
+
+  public void Dispose() => forecasts = null;
 }
