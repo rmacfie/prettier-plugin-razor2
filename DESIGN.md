@@ -89,6 +89,12 @@ Prettier printers are synchronous; the only async hook is `embed`. So:
   pipeline using the `textToDoc` it is handed, and returns the resulting string
   (a plain string is a valid Doc).
 
+Because `textToDoc` runs within the current format's plugin set, plugins that
+override the `html` parser (e.g. prettier-plugin-tailwindcss sorting `class`
+attributes) compose with ours for free — on the top-level markup and, since
+control-block bodies recurse the same pipeline, inside blocks too. Covered by
+`tests/plugin-composition.test.ts`.
+
 ## C# formatting (`src/csharp.ts`)
 
 C# is piped through CSharpier (`dotnet csharpier format --write-stdout`, stdin →

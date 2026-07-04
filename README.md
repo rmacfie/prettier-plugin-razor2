@@ -51,6 +51,21 @@ Known limitation: templated Razor delegates (`.cshtml`), e.g.
 Prettier [CLI usage docs](https://prettier.io/docs/en/cli.html)<br> Prettier
 [API usage docs](https://prettier.io/docs/en/api.html)
 
+## Composing with other plugins
+
+The HTML in your Razor files is formatted by Prettier's own HTML formatter, so
+other plugins that hook the `html` parser work on it too — including inside
+control blocks. For example,
+[prettier-plugin-tailwindcss](https://github.com/tailwindlabs/prettier-plugin-tailwindcss)
+sorts `class="…"` attributes. List both plugins (Tailwind last, per its docs):
+
+```json
+{ "plugins": ["prettier-plugin-razor2", "prettier-plugin-tailwindcss"] }
+```
+
+This applies only to the HTML: classes written inside C# (a `@code`/`@{ }` block
+or a dynamic `class="@GetCss()"` value) are not sorted.
+
 # Configuration
 
 This library follows the same configuration format as Prettier, which is
