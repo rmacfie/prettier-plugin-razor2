@@ -1,8 +1,19 @@
-import type { Parser, Printer, SupportLanguage } from 'prettier';
+import type {
+  AstPath,
+  Doc,
+  Options,
+  Parser,
+  Printer,
+  SupportLanguage,
+} from 'prettier';
 
-import type { AnyNode, RootNode } from './ast.ts';
-import { parse as parseRazor } from './parse.ts';
-import { print } from './print.ts';
+import { formatDocument } from './format.ts';
+
+/** Trivial AST: the whole document is formatted in one embedded pass. */
+interface RazorRoot {
+  type: 'razor-root';
+  source: string;
+}
 
 export const languages: SupportLanguage[] = [
   {
@@ -13,15 +24,32 @@ export const languages: SupportLanguage[] = [
   },
 ];
 
-export const parsers: Record<string, Parser<RootNode>> = {
+export const parsers: Record<string, Parser<RazorRoot>> = {
   razor: {
-    parse: (text) => parseRazor(text),
+    parse: (text) => ({ type: 'razor-root', source: text }),
     astFormat: 'razor-ast',
     locStart: () => 0,
     locEnd: () => 0,
   },
 };
 
-export const printers: Record<string, Printer<AnyNode>> = {
-  'razor-ast': { print },
+export const printers: Record<string, Printer<RazorRoot>> = {
+  'razor-ast': {
+    // All work happens in `embed` (the only async printer hook); `print` is
+    // required but unused.
+    print: () => '',
+    embed(path: AstPath<RazorRoot>) {
+      const node = path.node;
+      if (node.type !== 'razor-root') return null;
+      return async (
+        textToDoc,
+        _print,
+        _embedPath,
+        options: Options,
+      ): Promise<Doc> => {
+        const formatted = await formatDocument(node.source, textToDoc, options);
+        return formatted.replace(/\s+$/, '') + '\n';
+      };
+    },
+  },
 };

@@ -36,18 +36,22 @@ Just append args directly (`pnpm run node -e "..."`, `pnpm run node file.ts`).
 
 ## Architecture
 
-Standard Prettier plugin shape in `src/index.ts`: `languages`, `parsers` (parser
-name `razor`), `printers` (astFormat `razor-ast`).
+The strategy: **delegate all HTML formatting to Prettier's own HTML printer**
+and leave Razor/C# alone (C# is preserved verbatim, not reformatted). Full
+rationale and the mask/format/restore pipeline are in [DESIGN.md](DESIGN.md).
 
-- `src/parse.ts` — regex-based tokenizer/parser (adapted from
-  html-parse-stringify2). Returns a `RootNode`. Everything from `@code {` to EOF
-  is captured verbatim as a text node — C# is out of scope for this plugin.
-- `src/parse-tag.ts` / `src/parse-code.ts` — tokenize a single tag / Razor
-  token.
-- `src/print.ts` — the printer. Recurses via `path.map` and the `print` callback
-  and builds output with Prettier's Doc builders (idiomatic v3).
-- `src/ast.ts` — the discriminated-union AST
-  (`RootNode | TagNode | TextNode | CodeNode | CommentNode`).
+- `src/index.ts` — plugin shape (`languages`, parser `razor`, printer
+  `razor-ast`). The parser returns a trivial root node; all work happens in the
+  printer's async `embed` hook (the only place a plugin may `await`).
+- `src/format.ts` — the pipeline: `mask` the source → format the masked markup
+  with Prettier HTML (`textToDoc(..., { parser: 'html' })` + `printDocToString`)
+  → `restore` the masked constructs, recursing into control-block bodies.
+- `src/scan.ts` — `mask()` plus the C#/markup-aware brace matching that finds
+  each construct's extent. Replaces `@code`/`@{}`, control-flow blocks and
+  directive lines with `<div data-razor="N"></div>` placeholders.
+
+Inline expressions, razor attributes, razor/HTML comments and components are NOT
+masked — Prettier's HTML formatter handles them correctly on its own.
 
 ## Testing
 
@@ -55,10 +59,14 @@ name `razor`), `printers` (astFormat `razor-ast`).
   (no Jest). They assert exact formatted output (input string -> expected
   string); fixtures are in `tests/fixtures/`.
 - Add a test for every behavior change or bug fix.
+- Every construct must round-trip: `format(format(x)) === format(x)`.
 
 ## Known limitations (not bugs to "fix" incidentally)
 
-- The parser is regex-based and fragile; it is not a full Razor grammar.
-- Attribute lists are not wrapped to `printWidth`.
-- A text node immediately following a block element can glue to the preceding
-  close tag. Preserve existing behavior unless explicitly asked to change it.
+- C# is never reformatted (verbatim), by design for now.
+- A construct whose body splits an HTML element across blocks
+  (`@if(x){<tr>}…{</tr>}`) can't be delegated to the HTML formatter.
+- Literal `{`/`}` in bare markup text may confuse brace matching.
+- A block construct written with no surrounding whitespace (e.g.
+  `<div>@{...}</div>`) stays inline — this mirrors Prettier's HTML whitespace
+  sensitivity and is intentional.
