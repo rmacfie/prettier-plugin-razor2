@@ -22,10 +22,17 @@ parsing your code and re-printing it, taking various rules into account.
 # Notice
 
 This plugin is still under development. It formats the HTML in a Razor file by
-delegating to Prettier's own HTML formatter, and leaves Razor/C# constructs
-alone: control-flow blocks (`@if`, `@foreach`, …) are re-indented in Allman
-style, and C# (`@code`, `@{ }`, expressions) is preserved verbatim — it is not
-reformatted. Please try it out and provide feedback.
+delegating to Prettier's own HTML formatter, and the C# in `@code`/`@functions`/
+`@{ }` blocks by delegating to [CSharpier](https://csharpier.com). Control-flow
+blocks (`@if`, `@foreach`, …) are re-indented in Allman style. Please try it out
+and provide feedback.
+
+## C# formatting
+
+C# formatting requires the [CSharpier](https://csharpier.com) CLI on your `PATH`
+(`dotnet tool install csharpier`, invoked as `dotnet csharpier`). If it is not
+available, C# is left untouched. Override the command — or disable C# formatting
+entirely — with the `csharpierCommand` option (set it to `""` to disable).
 
 # Installation
 
@@ -61,7 +68,6 @@ JavaScript in `dist/`.
     pnpm test           # run the test suite (node --test)
     pnpm typecheck      # type-check without emitting
     pnpm build          # compile src/ to dist/
-    pnpm example        # format example.razor with the plugin
 
-Tests and the `example` script run the TypeScript sources directly via Node's
-native type stripping, so no build step is required to develop or test.
+Tests run the TypeScript sources directly via Node's native type stripping, so
+no build step is required to develop or test.

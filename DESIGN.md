@@ -2,11 +2,11 @@
 
 ## Goal
 
-Reformat `.razor` files by **delegating all HTML formatting to Prettier's own
-HTML printer**, while leaving Razor/C# constructs alone. C# is _not_ formatted —
-it is preserved verbatim (a future version may hand it to a C# formatter).
+Reformat `.razor` files by **delegating HTML to Prettier's own HTML printer**
+and **C# to [CSharpier](https://csharpier.com)**. This plugin owns only the
+Razor layer that stitches the two together.
 
-This replaces the previous strategy (a bespoke regex parser + hand-rolled
+This replaces the original strategy (a bespoke regex parser + hand-rolled
 printer that re-indented markup itself and never understood HTML semantics).
 
 ## Why this works
@@ -53,7 +53,9 @@ Prettier's HTML formatter for free.
 
 3. **Restore** — for each placeholder line, read its indentation and render the
    recorded construct there:
-   - _Verbatim block_: emitted as-is (C# untouched), re-based to the indent.
+   - _Code block_ (`@code`/`@functions`/`@{ }`): the C# is formatted with
+     CSharpier (see below) and re-indented to match; on any failure it is kept
+     verbatim.
    - _Directive line_: emitted verbatim.
    - _Control block_: rendered in Allman style —
      ```
@@ -79,6 +81,22 @@ Prettier printers are synchronous; the only async hook is `embed`. So:
   pipeline using the `textToDoc` it is handed, and returns the resulting string
   (a plain string is a valid Doc).
 
+## C# formatting (`src/csharp.ts`)
+
+C# is piped through CSharpier (`dotnet csharpier format --write-stdout`, stdin →
+stdout). CSharpier picks up the project's `.editorconfig` / `.csharpierrc` via
+an absolute `--stdin-path` in the source file's directory.
+
+- `@{ }` bodies are **statements** — valid C# top-level statements, formatted
+  directly.
+- `@code`/`@functions` bodies are **class members** — not a compilation unit on
+  their own, so they are wrapped in `class __CSharpierWrapper__ { … }`,
+  formatted, then the class body is extracted and dedented.
+
+The command is the `csharpierCommand` option (default `dotnet csharpier`); set
+it to `""` to disable. Any failure — CSharpier missing, disabled, or C# it can't
+parse (e.g. markup mixed into a code block) — falls back to verbatim.
+
 ## Brace matching
 
 Finding a construct's closing `}` requires scanning past braces that appear
@@ -91,8 +109,10 @@ inside strings and comments:
 
 ## Known limitations
 
-- C# is never reformatted (by design, for now).
+- Control-flow **conditions** (`@if (x)`) and inline expressions (`@(a+b)`) are
+  not run through CSharpier — only the block bodies are.
 - A construct whose body splits an HTML element across blocks
-  (`@if(x){<tr>}…{</tr>}`) can't be delegated to the HTML formatter.
+  (`@if(x){<tr>}…{</tr>}`) can't be delegated to the HTML formatter, and markup
+  mixed into a `@{ }`/`@code` block makes CSharpier fall back to verbatim.
 - Literal `{`/`}` in bare markup text may confuse brace matching.
 - A block construct used in an inline context is promoted to its own line.

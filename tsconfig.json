@@ -1,9 +1,11 @@
 {
+  "include": ["src"],
   "compilerOptions": {
     "target": "esnext",
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "lib": ["esnext"],
+    "types": ["node"],
 
     "declaration": true,
     "declarationMap": true,
@@ -35,6 +37,5 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true
-  },
-  "include": ["src"]
+  }
 }

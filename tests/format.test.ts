@@ -21,6 +21,20 @@ function format(
   });
 }
 
+// C# formatting needs `dotnet csharpier` on PATH. Detect it once so tests that
+// assert formatted C# skip (rather than fail) when it isn't installed.
+// `false` means "don't skip"; a string is the skip reason.
+const csharpierSkip: string | false = await (async () => {
+  try {
+    const out = await format('@code {\npublic int X{get;set;}\n}');
+    return out.includes('public int X { get; set; }')
+      ? false
+      : 'CSharpier (dotnet csharpier) not available';
+  } catch {
+    return 'CSharpier (dotnet csharpier) not available';
+  }
+})();
+
 // --- HTML is delegated to Prettier's HTML formatter ------------------------
 
 test('formats plain markup via the HTML formatter', async () => {
@@ -106,23 +120,39 @@ test('recursively formats a control block body', async () => {
   );
 });
 
-// --- Verbatim C# blocks (ignored, not reformatted) -------------------------
+// --- C# formatting via CSharpier -------------------------------------------
 
-test('preserves a @code block verbatim', async () => {
+test('formats C# in a @code block', { skip: csharpierSkip }, async () => {
   assert.equal(
-    await format('@code {\n  public int X { get; set; }\n}'),
-    '@code {\n  public int X { get; set; }\n}\n',
+    await format('@code {\npublic int X{get;set;}\nvoid F(){var y=1;}\n}'),
+    '@code {\n  public int X { get; set; }\n\n  void F()\n  {\n    var y = 1;\n  }\n}\n',
   );
 });
 
-test('preserves an inline @{ } block verbatim', async () => {
+test(
+  'formats C# statements in an @{ } block',
+  { skip: csharpierSkip },
+  async () => {
+    assert.equal(
+      await format('<div>\n@{ var x=1;var z=x+2; }\n</div>'),
+      '<div>\n  @{\n    var x = 1;\n    var z = x + 2;\n  }\n</div>\n',
+    );
+  },
+);
+
+test('leaves C# verbatim when formatting is disabled', async () => {
+  // csharpierCommand: "" disables the CSharpier call.
   assert.equal(
-    await format('<div>@{ var x = 1; }</div>'),
-    '<div>@{ var x = 1; }</div>\n',
+    await format('@code {\npublic int X{get;set;}\n}', {
+      csharpierCommand: '',
+    }),
+    '@code {\npublic int X{get;set;}\n}\n',
   );
 });
 
-test('does not mangle C# containing braces and strings', async () => {
+test('falls back to verbatim when C# cannot be parsed', async () => {
+  // `var` isn't valid as a class member, so CSharpier errors and we keep the
+  // original — which also proves brace matching survives braces in strings.
   const source = '@code {\n  var s = "a } b";\n  // } not a brace\n}';
   assert.equal(await format(source), source + '\n');
 });
@@ -142,12 +172,15 @@ test('handles @code blocks before, after and around markup', async () => {
 
 // --- Full fixture ----------------------------------------------------------
 
-test('formats the full component fixture', async () => {
-  const source = fs.readFileSync(
-    path.join(here, 'fixtures', 'example.razor'),
-    'utf8',
-  );
-  const expected = `<div class="alert alert-secondary mt-4" role="alert">
+test(
+  'formats the full component fixture',
+  { skip: csharpierSkip },
+  async () => {
+    const source = fs.readFileSync(
+      path.join(here, 'fixtures', 'example.razor'),
+      'utf8',
+    );
+    const expected = `<div class="alert alert-secondary mt-4" role="alert">
   <span class="oi oi-pencil mr-2" aria-hidden="true"></span>
   <strong>@Title</strong>
 
@@ -164,13 +197,14 @@ test('formats the full component fixture', async () => {
 </div>
 
 @code {
-    // Demonstrates how a parent component can supply parameters
-    [Parameter]
-    public string Title { get; set; }
+  // Demonstrates how a parent component can supply parameters
+  [Parameter]
+  public string Title { get; set; }
 }
 `;
-  assert.equal(await format(source), expected);
-});
+    assert.equal(await format(source), expected);
+  },
+);
 
 // --- Idempotency -----------------------------------------------------------
 
