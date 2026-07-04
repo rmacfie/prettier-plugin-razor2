@@ -40,6 +40,7 @@
     "dist"
   ],
   "scripts": {
+    "bench": "node bench/bench.ts",
     "build": "tsc -p tsconfig.dist.json",
     "clean": "rm -rf dist",
     "csharpier": "dotnet csharpier",
