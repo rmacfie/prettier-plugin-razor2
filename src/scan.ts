@@ -11,6 +11,20 @@ import type { CSharpKind } from './csharp.ts';
 export const INLINE_OPEN = '\uE000';
 export const INLINE_CLOSE = '\uE001';
 
+/** Build the block-level placeholder element for block index `n`. */
+export function blockPlaceholderFor(n: number): string {
+  return `<div data-razor="${n}"></div>`;
+}
+
+/**
+ * Matcher for {@link blockPlaceholderFor} output in formatted HTML; group 1 is
+ * the preceding indentation, group 2 the block index. Constructed fresh per
+ * call \u2014 restore recurses, so a shared /g regex's lastIndex would clash.
+ */
+export function blockPlaceholderRE(): RegExp {
+  return /([ \t]*)<div data-razor="(\d+)"><\/div>/g;
+}
+
 /** A `@code { }`, `@functions { }` or `@{ }` block holding C#. */
 export interface VerbatimBlock {
   kind: 'verbatim';
@@ -188,8 +202,14 @@ function skipCSharpToken(src: string, i: number): number {
   return -1;
 }
 
-// `i` at `{`; return index just past the matching `}`, skipping C# tokens.
-function matchBraceCSharp(src: string, i: number): number {
+// `i` at `open`; return index just past the matching `close`, skipping C#
+// strings/comments so their contents don't affect the depth count.
+function matchDelimited(
+  src: string,
+  i: number,
+  open: string,
+  close: string,
+): number {
   let depth = 0;
   let j = i;
   while (j < src.length) {
@@ -199,30 +219,17 @@ function matchBraceCSharp(src: string, i: number): number {
       continue;
     }
     const c = src[j];
-    if (c === '{') depth++;
-    else if (c === '}' && --depth === 0) return j + 1;
+    if (c === open) depth++;
+    else if (c === close && --depth === 0) return j + 1;
     j++;
   }
   return src.length;
 }
 
-// `i` at `(`; return index just past the matching `)`, skipping C# tokens.
-function matchParen(src: string, i: number): number {
-  let depth = 0;
-  let j = i;
-  while (j < src.length) {
-    const skipped = skipCSharpToken(src, j);
-    if (skipped !== -1) {
-      j = skipped;
-      continue;
-    }
-    const c = src[j];
-    if (c === '(') depth++;
-    else if (c === ')' && --depth === 0) return j + 1;
-    j++;
-  }
-  return src.length;
-}
+const matchBraceCSharp = (src: string, i: number): number =>
+  matchDelimited(src, i, '{', '}');
+const matchParen = (src: string, i: number): number =>
+  matchDelimited(src, i, '(', ')');
 
 // `i` at a quote; return index just past the closing quote (markup rules: no
 // backslash escaping).
@@ -399,7 +406,7 @@ export function mask(src: string): MaskResult {
   const blocks: RazorBlock[] = [];
   // Block placeholder: its own line, indent-aware on restore.
   const blockPlaceholder = (block: RazorBlock): string =>
-    `<div data-razor="${blocks.push(block) - 1}"></div>`;
+    blockPlaceholderFor(blocks.push(block) - 1);
   // Inline placeholder: a text token that stays in the flow.
   const inlinePlaceholder = (block: RazorBlock): string =>
     `${INLINE_OPEN}${blocks.push(block) - 1}${INLINE_CLOSE}`;

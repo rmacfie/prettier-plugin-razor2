@@ -3,20 +3,21 @@
 import { doc, type Doc } from 'prettier';
 
 import { formatCSharp, type RazorOptions } from './csharp.ts';
-import { INLINE_CLOSE, INLINE_OPEN, mask, type RazorBlock } from './scan.ts';
+import {
+  INLINE_CLOSE,
+  INLINE_OPEN,
+  blockPlaceholderRE,
+  mask,
+  type RazorBlock,
+} from './scan.ts';
 
 type Options = RazorOptions;
 
 /** Formats a chunk of embedded code with a given parser. */
 type TextToDoc = (text: string, options: Options) => Promise<Doc>;
 
-// Captures the indentation immediately preceding a placeholder so the restored
-// construct can be re-indented to match. Handles both own-line placeholders
-// (block-level) and inline ones Prettier chose not to break. Constructed fresh
-// per call — `restore` recurses, so a shared /g regex's lastIndex would clash.
-const placeholderRE = (): RegExp => /([ \t]*)<div data-razor="(\d+)"><\/div>/g;
-
-// Matches inline placeholder tokens; constructed fresh per call (see above).
+// Matches inline placeholder tokens; constructed fresh per call for the same
+// reason as blockPlaceholderRE (restore recurses).
 const inlineRE = (): RegExp =>
   new RegExp(`${INLINE_OPEN}(\\d+)${INLINE_CLOSE}`, 'g');
 
@@ -82,7 +83,7 @@ async function restore(
   textToDoc: TextToDoc,
   options: Options,
 ): Promise<string> {
-  const re = placeholderRE();
+  const re = blockPlaceholderRE();
   let out = '';
   let last = 0;
   let m: RegExpExecArray | null;
@@ -114,10 +115,7 @@ export async function formatDocument(
     printWidth: options.printWidth ?? 80,
     tabWidth: options.tabWidth ?? 2,
     useTabs: options.useTabs ?? false,
-    // printDocToString requires these fields; they don't affect our output.
-    parser: 'html',
-    endOfLine: 'lf',
-  } as never).formatted;
+  }).formatted;
 
   if (blocks.length === 0) return html;
   const restored = await restore(html, blocks, textToDoc, options);
