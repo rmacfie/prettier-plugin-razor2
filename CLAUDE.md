@@ -21,7 +21,6 @@ Just append args directly (`pnpm run node -e "..."`, `pnpm run node file.ts`).
     pnpm typecheck      # tsc --noEmit
     pnpm build          # compile src/ -> dist/ (ESM + .d.ts)
     pnpm format         # prettier --write .
-    pnpm example        # format example.razor with the plugin (stdout)
 
 ## TypeScript / build
 

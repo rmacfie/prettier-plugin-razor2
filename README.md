@@ -68,7 +68,6 @@ JavaScript in `dist/`.
     pnpm test           # run the test suite (node --test)
     pnpm typecheck      # type-check without emitting
     pnpm build          # compile src/ to dist/
-    pnpm example        # format example.razor with the plugin
 
-Tests and the `example` script run the TypeScript sources directly via Node's
-native type stripping, so no build step is required to develop or test.
+Tests run the TypeScript sources directly via Node's native type stripping, so
+no build step is required to develop or test.

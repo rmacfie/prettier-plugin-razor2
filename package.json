@@ -43,7 +43,6 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "csharpier": "dotnet csharpier",
-    "example": "prettier --plugin ./src/index.ts example.razor",
     "format": "prettier --write .",
     "node": "node",
     "prepublishOnly": "pnpm run clean && pnpm run build",
