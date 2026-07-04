@@ -21,153 +21,128 @@ function format(
   });
 }
 
-test('formats a simple element with text content', async () => {
+// --- HTML is delegated to Prettier's HTML formatter ------------------------
+
+test('formats plain markup via the HTML formatter', async () => {
   assert.equal(
     await format('<div class="a">hello</div>'),
     '<div class="a">hello</div>\n',
   );
 });
 
-test('indents nested elements', async () => {
+test('respects HTML whitespace sensitivity (inline stays inline)', async () => {
   assert.equal(
     await format('<div><span>x</span></div>'),
-    '<div>\n  <span>x</span>\n</div>\n',
+    '<div><span>x</span></div>\n',
+  );
+  assert.equal(
+    await format('<Card><p>body</p></Card>'),
+    '<Card><p>body</p></Card>\n',
   );
 });
 
-test('indents list items', async () => {
+test('self-closes void elements', async () => {
+  assert.equal(await format('<input type="text" >'), '<input type="text" />\n');
+});
+
+// --- Inline Razor passes straight through ----------------------------------
+
+test('keeps inline expressions and their spacing', async () => {
   assert.equal(
-    await format('<ul>\n<li>one</li>\n<li>two</li>\n</ul>'),
-    '<ul>\n  <li>one</li>\n  <li>two</li>\n</ul>\n',
+    await format('<td>@forecast.Date</td>'),
+    '<td>@forecast.Date</td>\n',
   );
-});
-
-test('self-closes void elements with a space before the slash', async () => {
   assert.equal(
-    await format('<input type="text" />'),
-    '<input type="text" />\n',
-  );
-  assert.equal(await format('<img src="a.png">'), '<img src="a.png" />\n');
-  assert.equal(await format('<br>'), '<br />\n');
-});
-
-test('renders a valueless boolean attribute', async () => {
-  assert.equal(
-    await format('<input type="text" disabled>'),
-    '<input type="text" disabled="disabled" />\n',
-  );
-});
-
-test('keeps a razor expression inline without a trailing space', async () => {
-  assert.equal(await format('<p>@Name</p>'), '<p>@Name</p>\n');
-  assert.equal(
-    await format('<strong>@Title</strong>'),
-    '<strong>@Title</strong>\n',
-  );
-});
-
-test('preserves a space between text and a following expression', async () => {
-  // Regression: the trimmed text node used to glue onto the expression.
-  assert.equal(await format('<p>Hello @Name!</p>'), '<p>Hello @Name!</p>\n');
-  assert.equal(
-    await format('<p>Total: @Count items</p>'),
-    '<p>Total: @Count items</p>\n',
-  );
-});
-
-test('keeps an explicit @(...) expression intact', async () => {
-  assert.equal(await format('<p>@(Model.Name)</p>'), '<p>@(Model.Name)</p>\n');
-});
-
-test('keeps razor attributes on the element', async () => {
-  assert.equal(await format('<input value="@x" />'), '<input value="@x" />\n');
-  assert.equal(
-    await format('<button @onclick="Go">Go</button>'),
-    '<button @onclick="Go">Go</button>\n',
+    await format('<p>Hello @Name, welcome!</p>'),
+    '<p>Hello @Name, welcome!</p>\n',
   );
 });
 
 test('leaves an escaped @@ untouched', async () => {
-  assert.equal(
-    await format('<p>email@@example.com</p>'),
-    '<p>email@@example.com</p>\n',
-  );
+  assert.equal(await format('<p>a@@b.com</p>'), '<p>a@@b.com</p>\n');
 });
 
-test('indents a PascalCase component pair', async () => {
-  assert.equal(
-    await format('<Card><p>body</p></Card>'),
-    '<Card>\n  <p>body</p>\n</Card>\n',
-  );
+test('leaves a razor comment untouched', async () => {
+  assert.equal(await format('<div>@* c *@</div>'), '<div>@* c *@</div>\n');
 });
 
-test('breaks an inline @{ } code block onto its own lines', async () => {
-  assert.equal(
-    await format('<div>@{ var x = 1; }</div>'),
-    '<div>\n  @{\n    var x = 1;\n  }\n</div>\n',
-  );
-});
+// --- Directives ------------------------------------------------------------
 
-test('keeps directives on their own lines', async () => {
+test('keeps directive lines verbatim on their own lines', async () => {
   assert.equal(
     await format('@page "/home"\n@inject IService S\n<h1>Hi</h1>'),
     '@page "/home"\n@inject IService S\n<h1>Hi</h1>\n',
   );
 });
 
-test('indents an @if control-flow block (Allman braces)', async () => {
+// --- Control-flow blocks ---------------------------------------------------
+
+test('formats an @if block in Allman style', async () => {
   assert.equal(
     await format('@if (a)\n{\n<p>yes</p>\n}'),
     '@if (a)\n{\n  <p>yes</p>\n}\n',
   );
 });
 
-test('normalizes a K&R-brace block to Allman without losing the brace', async () => {
-  // Regression: the same-line `{` was swallowed and the closing `}` dropped.
+test('normalizes K&R braces (and else chains) to Allman', async () => {
   assert.equal(
-    await format('@foreach (var x in items) {\n<li>@x</li>\n}'),
-    '@foreach (var x in items)\n{\n  <li>@x</li>\n}\n',
+    await format('@if (a) {\n<p>y</p>\n} else {\n<p>n</p>\n}'),
+    '@if (a)\n{\n  <p>y</p>\n}\nelse\n{\n  <p>n</p>\n}\n',
   );
 });
 
-test('puts a control-flow expression on its own line inside an element', async () => {
+test('formats a control block nested inside an element', async () => {
   assert.equal(
-    await format('<tbody>@foreach (var x in xs)\n{\n<tr>@x</tr>\n}</tbody>'),
-    '<tbody>\n  @foreach (var x in xs)\n  {\n    <tr>@x</tr>\n  }\n</tbody>\n',
+    await format('<ul>@foreach (var x in xs) {\n<li>@x</li>\n}</ul>'),
+    '<ul>\n  @foreach (var x in xs)\n  {\n    <li>@x</li>\n  }\n</ul>\n',
   );
 });
 
-test('does not treat @forecast as control flow', async () => {
-  // `@for` is a prefix of `@forecast`; only whole keywords count.
+test('recursively formats a control block body', async () => {
+  // The <li> markup inside the loop is HTML-formatted; the loop is Allman.
   assert.equal(
-    await format('<td>@forecast.Date</td>'),
-    '<td>@forecast.Date</td>\n',
+    await format('@foreach (var x in xs){<li   class="a">@x</li>}'),
+    '@foreach (var x in xs)\n{\n  <li class="a">@x</li>\n}\n',
   );
 });
 
-test('formats a razor comment', async () => {
-  assert.equal(
-    await format('<div>@* a comment *@</div>'),
-    '<div>\n  @* a comment *@\n</div>\n',
-  );
-});
+// --- Verbatim C# blocks (ignored, not reformatted) -------------------------
 
-test('formats an html comment', async () => {
+test('preserves a @code block verbatim', async () => {
   assert.equal(
-    await format('<div><!-- hi --></div>'),
-    '<div>\n  <!-- hi -->\n</div>\n',
-  );
-});
-
-test('preserves a standalone @code block verbatim', async () => {
-  const source = '@code {\n  public int X { get; set; }\n}';
-  assert.equal(
-    await format(source),
+    await format('@code {\n  public int X { get; set; }\n}'),
     '@code {\n  public int X { get; set; }\n}\n',
   );
 });
 
-test('formats a full component with markup and a code block', async () => {
+test('preserves an inline @{ } block verbatim', async () => {
+  assert.equal(
+    await format('<div>@{ var x = 1; }</div>'),
+    '<div>@{ var x = 1; }</div>\n',
+  );
+});
+
+test('does not mangle C# containing braces and strings', async () => {
+  const source = '@code {\n  var s = "a } b";\n  // } not a brace\n}';
+  assert.equal(await format(source), source + '\n');
+});
+
+test('handles @code blocks before, after and around markup', async () => {
+  // Regression: the old formatter grabbed the first @code to EOF, swallowing
+  // any markup after it and mishandling a @code before markup.
+  assert.equal(
+    await format('@code {\n  int A;\n}\n<h1>Hi</h1>\n@code {\n  int B;\n}'),
+    '@code {\n  int A;\n}\n<h1>Hi</h1>\n@code {\n  int B;\n}\n',
+  );
+  assert.equal(
+    await format('<h1>Hi</h1>\n@code {\n  int X;\n}\n<p>Bye</p>'),
+    '<h1>Hi</h1>\n@code {\n  int X;\n}\n<p>Bye</p>\n',
+  );
+});
+
+// --- Full fixture ----------------------------------------------------------
+
+test('formats the full component fixture', async () => {
   const source = fs.readFileSync(
     path.join(here, 'fixtures', 'example.razor'),
     'utf8',
@@ -175,10 +150,19 @@ test('formats a full component with markup and a code block', async () => {
   const expected = `<div class="alert alert-secondary mt-4" role="alert">
   <span class="oi oi-pencil mr-2" aria-hidden="true"></span>
   <strong>@Title</strong>
-  <span class="text-nowrap">Please take our
-    <a target="_blank" class="font-weight-bold" href="https://go.microsoft.com/fwlink/?linkid=2127996">brief survey</a>
-  </span>and tell us what you think.
+
+  <span class="text-nowrap">
+    Please take our
+    <a
+      target="_blank"
+      class="font-weight-bold"
+      href="https://go.microsoft.com/fwlink/?linkid=2127996"
+      >brief survey</a
+    >
+  </span>
+  and tell us what you think.
 </div>
+
 @code {
     // Demonstrates how a parent component can supply parameters
     [Parameter]
@@ -188,13 +172,15 @@ test('formats a full component with markup and a code block', async () => {
   assert.equal(await format(source), expected);
 });
 
+// --- Idempotency -----------------------------------------------------------
+
 test('is idempotent', async () => {
   const sources = [
     fs.readFileSync(path.join(here, 'fixtures', 'example.razor'), 'utf8'),
     '<p>Hello @Name!</p>',
-    '@if (a)\n{\n<p>yes</p>\n}\nelse\n{\n<p>no</p>\n}',
-    '@foreach (var x in items) {\n<li>@x</li>\n}',
-    '<div>@{ var x = 1; }</div>',
+    '@if (a) {\n<p>y</p>\n} else {\n<p>n</p>\n}',
+    '<ul>@foreach (var x in xs) {\n<li>@x</li>\n}</ul>',
+    '@code {\n  public int X { get; set; }\n}',
     '@page "/home"\n@inject IService S\n<h1>Hi</h1>',
   ];
   for (const source of sources) {

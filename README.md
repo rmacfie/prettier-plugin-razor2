@@ -21,9 +21,11 @@ parsing your code and re-printing it, taking various rules into account.
 
 # Notice
 
-This plugin is still under development, and has very basic formatting
-functionality. Please try it out and provide feedback. Note that the `@code`
-sections (pure C# code) are ignored by the formatter.
+This plugin is still under development. It formats the HTML in a Razor file by
+delegating to Prettier's own HTML formatter, and leaves Razor/C# constructs
+alone: control-flow blocks (`@if`, `@foreach`, …) are re-indented in Allman
+style, and C# (`@code`, `@{ }`, expressions) is preserved verbatim — it is not
+reformatted. Please try it out and provide feedback.
 
 # Installation
 
