@@ -3,6 +3,7 @@ import type {
   Doc,
   Options,
   Parser,
+  Plugin,
   Printer,
   SupportLanguage,
 } from 'prettier';
@@ -30,6 +31,17 @@ export const parsers: Record<string, Parser<RazorRoot>> = {
     astFormat: 'razor-ast',
     locStart: () => 0,
     locEnd: () => 0,
+  },
+};
+
+export const options: Plugin['options'] = {
+  csharpierCommand: {
+    type: 'string',
+    category: 'Razor',
+    default: 'dotnet csharpier',
+    description:
+      'Command used to format embedded C# via CSharpier (piped over stdin). ' +
+      'Set to an empty string to disable C# formatting (kept verbatim).',
   },
 };
 

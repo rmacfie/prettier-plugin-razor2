@@ -36,19 +36,22 @@ Just append args directly (`pnpm run node -e "..."`, `pnpm run node file.ts`).
 
 ## Architecture
 
-The strategy: **delegate all HTML formatting to Prettier's own HTML printer**
-and leave Razor/C# alone (C# is preserved verbatim, not reformatted). Full
-rationale and the mask/format/restore pipeline are in [DESIGN.md](DESIGN.md).
+The strategy: **delegate HTML to Prettier's own HTML printer and C# to
+CSharpier**; this plugin owns only the Razor layer between them. Full rationale
+and the mask/format/restore pipeline are in [DESIGN.md](DESIGN.md).
 
 - `src/index.ts` — plugin shape (`languages`, parser `razor`, printer
-  `razor-ast`). The parser returns a trivial root node; all work happens in the
-  printer's async `embed` hook (the only place a plugin may `await`).
+  `razor-ast`, the `csharpierCommand` option). The parser returns a trivial root
+  node; all work happens in the printer's async `embed` hook (the only place a
+  plugin may `await`).
 - `src/format.ts` — the pipeline: `mask` the source → format the masked markup
   with Prettier HTML (`textToDoc(..., { parser: 'html' })` + `printDocToString`)
   → `restore` the masked constructs, recursing into control-block bodies.
 - `src/scan.ts` — `mask()` plus the C#/markup-aware brace matching that finds
   each construct's extent. Replaces `@code`/`@{}`, control-flow blocks and
   directive lines with `<div data-razor="N"></div>` placeholders.
+- `src/csharp.ts` — pipes C# through CSharpier (`dotnet csharpier`), stdin →
+  stdout, with a verbatim fallback on any failure.
 
 Inline expressions, razor attributes, razor/HTML comments and components are NOT
 masked — Prettier's HTML formatter handles them correctly on its own.
@@ -58,12 +61,16 @@ masked — Prettier's HTML formatter handles them correctly on its own.
 - Tests live in `tests/*.test.ts`, run with the built-in `node --test` runner
   (no Jest). They assert exact formatted output (input string -> expected
   string); fixtures are in `tests/fixtures/`.
+- C# tests require `dotnet csharpier` (installed here as `pnpm csharpier`). They
+  detect its absence and `skip` (rather than fail) — check the run summary for
+  skips if you don't have it.
 - Add a test for every behavior change or bug fix.
 - Every construct must round-trip: `format(format(x)) === format(x)`.
 
 ## Known limitations (not bugs to "fix" incidentally)
 
-- C# is never reformatted (verbatim), by design for now.
+- Control-flow conditions and inline expressions aren't run through CSharpier;
+  only `@code`/`@functions`/`@{ }` block bodies are.
 - A construct whose body splits an HTML element across blocks
   (`@if(x){<tr>}…{</tr>}`) can't be delegated to the HTML formatter.
 - Literal `{`/`}` in bare markup text may confuse brace matching.

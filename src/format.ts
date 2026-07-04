@@ -1,8 +1,11 @@
 // The async mask -> HTML-format -> restore pipeline. See DESIGN.md.
 
-import { doc, type Doc, type Options } from 'prettier';
+import { doc, type Doc } from 'prettier';
 
+import { formatCSharp, type RazorOptions } from './csharp.ts';
 import { mask, type RazorBlock } from './scan.ts';
+
+type Options = RazorOptions;
 
 /** Formats a chunk of embedded code with a given parser. */
 type TextToDoc = (text: string, options: Options) => Promise<Doc>;
@@ -40,8 +43,14 @@ async function renderBlock(
   switch (block.kind) {
     case 'directive':
       return indent + block.text;
-    case 'verbatim':
-      return reindentVerbatim(block.text, indent);
+    case 'verbatim': {
+      const formatted = await formatCSharp(block.body, block.csharp, options);
+      // CSharpier unavailable/disabled or couldn't parse the C#: keep verbatim.
+      if (formatted === null) return reindentVerbatim(block.raw, indent);
+      if (formatted === '') return `${indent}${block.opener}\n${indent}}`;
+      const body = indentLines(formatted, indent + indentUnit(options));
+      return `${indent}${block.opener}\n${body}\n${indent}}`;
+    }
     case 'control': {
       const inner = indent + indentUnit(options);
       const parts: string[] = [];

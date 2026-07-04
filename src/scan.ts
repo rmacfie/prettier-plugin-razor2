@@ -2,10 +2,19 @@
 // handle (code blocks, control-flow blocks, directive lines) with block-level
 // placeholders, recording the originals for later restoration. See DESIGN.md.
 
-/** A `@code { }`, `@functions { }` or `@{ }` block — C# kept verbatim. */
+import type { CSharpKind } from './csharp.ts';
+
+/** A `@code { }`, `@functions { }` or `@{ }` block holding C#. */
 export interface VerbatimBlock {
   kind: 'verbatim';
-  text: string;
+  /** The opener line, e.g. `@code {` or `@{`. */
+  opener: string;
+  /** The C# between the braces. */
+  body: string;
+  /** The C# context the body sits in. */
+  csharp: CSharpKind;
+  /** The whole original construct, used as a verbatim fallback. */
+  raw: string;
 }
 
 /** A single-line directive such as `@page "/x"` — kept verbatim. */
@@ -378,22 +387,34 @@ export function mask(src: string): MaskResult {
       continue;
     }
 
-    // `@{ ... }` verbatim code block.
+    // `@{ ... }` code block (statements).
     if (src[i + 1] === '{') {
       const end = matchBraceCSharp(src, i + 1);
-      out += placeholder({ kind: 'verbatim', text: src.slice(i, end) });
+      out += placeholder({
+        kind: 'verbatim',
+        opener: '@{',
+        body: src.slice(i + 2, end - 1),
+        csharp: 'statements',
+        raw: src.slice(i, end),
+      });
       i = end;
       continue;
     }
 
     const kw = readIdent(src, i + 1);
 
-    // `@code { }` / `@functions { }`.
+    // `@code { }` / `@functions { }` (class members).
     if (kw === 'code' || kw === 'functions') {
       const bracePos = skipWs(src, i + 1 + kw.length);
       if (src[bracePos] === '{') {
         const end = matchBraceCSharp(src, bracePos);
-        out += placeholder({ kind: 'verbatim', text: src.slice(i, end) });
+        out += placeholder({
+          kind: 'verbatim',
+          opener: `@${kw} {`,
+          body: src.slice(bracePos + 1, end - 1),
+          csharp: 'members',
+          raw: src.slice(i, end),
+        });
         i = end;
         continue;
       }
