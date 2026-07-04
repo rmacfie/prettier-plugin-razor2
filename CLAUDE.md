@@ -18,7 +18,7 @@ Just append args directly (`pnpm run node -e "..."`, `pnpm run node file.ts`).
 ## Commands
 
     pnpm test           # run the test suite (node --test on the .ts sources)
-    pnpm typecheck      # tsc --noEmit
+    pnpm typecheck      # type-check the whole project (base config is noEmit)
     pnpm build          # compile src/ -> dist/ (ESM + .d.ts)
     pnpm format         # prettier --write .
 
@@ -32,6 +32,9 @@ Just append args directly (`pnpm run node -e "..."`, `pnpm run node file.ts`).
 - Keep source to type-erasable syntax only (`erasableSyntaxOnly` is on) so Node
   can execute it without transpiling — no enums, no parameter properties, etc.
 - `noUncheckedIndexedAccess` is on: indexed access is `T | undefined`.
+- Two tsconfigs: `tsconfig.json` type-checks the whole project (src + tests,
+  `noEmit`); `tsconfig.dist.json` extends it to emit `src/ -> dist/` for
+  `build`.
 
 ## Architecture
 
@@ -52,16 +55,21 @@ and the mask/format/restore pipeline are in [DESIGN.md](DESIGN.md).
   inline constructs (explicit `@(…)`, `@* *@` comments) become private-use text
   tokens so they don't force a line break.
 - `src/csharp.ts` — pipes C# through CSharpier (`dotnet csharpier`), stdin →
-  stdout, with a verbatim fallback on any failure.
+  stdout. Every failure falls back to verbatim C#: warns once per command if
+  CSharpier isn't runnable; silent if it runs but rejects the input.
 
 Implicit expressions, razor attributes, `@@`, emails, HTML comments and
 components are NOT masked — Prettier handles them. Explicit `@(…)` expressions
 and razor comments ARE masked (they can contain `<`/generics or HTML that
 Prettier would mangle). Directives are only masked at the start of a line.
 
+Because the HTML goes through Prettier's own `textToDoc`, plugins that override
+the `html` parser (e.g. prettier-plugin-tailwindcss) compose with this one.
+
 ## Testing
 
-- Tests live in `tests/*.test.ts`, one file per construct category, sharing
+- Tests live in `tests/*.test.ts`, grouped by area (a file per construct
+  category, plus `csharpier-availability` and `plugin-composition`), sharing
   `tests/support.ts` (the `format` helper, `expectIdempotent`, CSharpier
   detection). Run with the built-in `node --test` runner (no Jest).
 - The tests target _our_ mechanics — correctly finding the start/end of each

@@ -2,9 +2,9 @@
 
 ## Goal
 
-Reformat `.razor` files by **delegating HTML to Prettier's own HTML printer**
-and **C# to [CSharpier](https://csharpier.com)**. This plugin owns only the
-Razor layer that stitches the two together.
+Reformat Razor files (`.razor` and `.cshtml`) by **delegating HTML to Prettier's
+own HTML printer** and **C# to [CSharpier](https://csharpier.com)**. This plugin
+owns only the Razor layer that stitches the two together.
 
 This replaces the original strategy (a bespoke regex parser + hand-rolled
 printer that re-indented markup itself and never understood HTML semantics).
