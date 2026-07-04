@@ -31,8 +31,9 @@ and provide feedback.
 
 C# formatting requires the [CSharpier](https://csharpier.com) CLI on your `PATH`
 (`dotnet tool install csharpier`, invoked as `dotnet csharpier`). If it is not
-available, C# is left untouched. Override the command — or disable C# formatting
-entirely — with the `csharpierCommand` option (set it to `""` to disable).
+available, C# is left untouched and a one-time warning is printed. Override the
+command — or disable C# formatting entirely — with the `csharpierCommand` option
+(set it to `""` to disable, which also silences the warning).
 
 # Installation
 

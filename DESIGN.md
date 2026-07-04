@@ -102,8 +102,15 @@ an absolute `--stdin-path` in the source file's directory.
   formatted, then the class body is extracted and dedented.
 
 The command is the `csharpierCommand` option (default `dotnet csharpier`); set
-it to `""` to disable. Any failure — CSharpier missing, disabled, or C# it can't
-parse (e.g. markup mixed into a code block) — falls back to verbatim.
+it to `""` to disable. Formatting never throws — every failure falls back to
+verbatim C#:
+
+- **Not runnable** (not on PATH / not executable): warn once per command (a
+  likely misconfiguration), then verbatim.
+- **Rejected** (CSharpier ran but exited non-zero, e.g. markup inside a code
+  block, or a genuine syntax error): silent verbatim — these are frequently
+  legitimate and can't be told apart from real errors.
+- **Disabled** (`csharpierCommand: ""`): silent verbatim, no warning.
 
 ## Brace matching
 

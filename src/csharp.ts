@@ -1,6 +1,7 @@
-// Formats embedded C# by piping it through CSharpier (stdin -> stdout). On any
-// failure (CSharpier missing, disabled, or a syntax it can't parse) the caller
-// falls back to keeping the C# verbatim.
+// Formats embedded C# by piping it through CSharpier (stdin -> stdout). Every
+// failure falls back to verbatim C# (the caller keeps the original): if the
+// command isn't runnable we warn once per command; if it runs but rejects the
+// input we stay silent (often legitimate — e.g. markup inside a code block).
 
 import { spawn } from 'node:child_process';
 import * as path from 'node:path';
@@ -22,23 +23,47 @@ export interface RazorOptions extends Options {
 const DEFAULT_COMMAND = 'dotnet csharpier';
 const WRAPPER = '__CSharpierWrapper__';
 
-// Spawn `command args`, write `input` to stdin, resolve stdout on success or
-// null on any failure (non-zero exit, spawn error such as ENOENT).
+type RunResult =
+  | { ok: true; stdout: string }
+  // The command could not be spawned (not on PATH, not executable, …).
+  | { ok: false; kind: 'unavailable' }
+  // The command ran but rejected the input (non-zero exit).
+  | { ok: false; kind: 'rejected' };
+
+// Spawn `command args` and write `input` to stdin.
 function run(
   command: string,
   args: string[],
   input: string,
-): Promise<string | null> {
+): Promise<RunResult> {
   return new Promise((resolve) => {
     const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     child.stdout.on('data', (chunk) => (stdout += chunk));
     child.stderr.on('data', () => {});
-    child.on('error', () => resolve(null));
-    child.on('close', (code) => resolve(code === 0 ? stdout : null));
+    child.on('error', () => resolve({ ok: false, kind: 'unavailable' }));
+    child.on('close', (code) =>
+      resolve(
+        code === 0 ? { ok: true, stdout } : { ok: false, kind: 'rejected' },
+      ),
+    );
     child.stdin.on('error', () => {}); // ignore EPIPE if the child dies early
     child.stdin.end(input);
   });
+}
+
+// Warn at most once per distinct command that CSharpier couldn't be run, so a
+// misconfiguration is visible without spamming a line per file.
+const warnedCommands = new Set<string>();
+function warnUnavailable(command: string): void {
+  if (warnedCommands.has(command)) return;
+  warnedCommands.add(command);
+  console.warn(
+    `[prettier-plugin-razor2] Could not run CSharpier ("${command}"); leaving ` +
+      `embedded C# unformatted. Install it (\`dotnet tool install csharpier\`) ` +
+      `or set the "csharpierCommand" option to "" to disable C# formatting and ` +
+      `silence this warning.`,
+  );
 }
 
 // The first non-empty leading-whitespace run in `text` — CSharpier's indent
@@ -67,7 +92,14 @@ async function runCSharpier(
     const dir = path.resolve(path.dirname(options.filepath));
     args.push('--stdin-path', path.join(dir, '__csharpier__.cs'));
   }
-  return run(exe, args, code);
+
+  const result = await run(exe, args, code);
+  if (result.ok) return result.stdout;
+  // Not installed/runnable: warn once (a likely misconfiguration). Rejected
+  // input is left silent — it's frequently legitimate (e.g. markup inside a
+  // code block) and indistinguishable from a real syntax error.
+  if (result.kind === 'unavailable') warnUnavailable(command);
+  return null;
 }
 
 /**
