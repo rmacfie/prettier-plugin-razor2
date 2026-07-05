@@ -121,8 +121,47 @@ test('handles an @section block (.cshtml)', async () => {
   );
 });
 
+test('keeps <text> transitions inside a block body', async () => {
+  assert.equal(
+    await format(
+      '@foreach (var p in people)\n{\n<text>Name: @p.Name, </text>\n}',
+    ),
+    '@foreach (var p in people)\n{\n  <text>Name: @p.Name, </text>\n}\n',
+  );
+});
+
+test('keeps @: line transitions inside a block body', async () => {
+  assert.equal(
+    await format('@foreach (var p in people)\n{\n@:Row: @p.Name\n}'),
+    '@foreach (var p in people)\n{\n  @:Row: @p.Name\n}\n',
+  );
+});
+
+test('multi-case @switch is stable (arms may glue — known limitation)', async () => {
+  // Pins the documented limitation: `break; default:` glues onto one line
+  // because case labels are plain text to the HTML formatter. If this test
+  // starts failing with prettier output, the limitation got FIXED — update
+  // the docs along with this expectation.
+  assert.equal(
+    await format(
+      '@switch (s)\n{\ncase Status.Draft:\n<span>Draft</span>\nbreak;\ndefault:\n<span>?</span>\nbreak;\n}',
+    ),
+    '@switch (s)\n{\n  case Status.Draft:\n  <span>Draft</span>\n  break; default:\n  <span>?</span>\n  break;\n}\n',
+  );
+});
+
+test('normalizes CRLF input to LF', async () => {
+  assert.equal(
+    await format(
+      '<div>\r\n<p>a</p>\r\n</div>\r\n@if (x)\r\n{\r\n<p>y</p>\r\n}\r\n',
+    ),
+    '<div>\n  <p>a</p>\n</div>\n@if (x)\n{\n  <p>y</p>\n}\n',
+  );
+});
+
 test('is idempotent', async () => {
   await expectIdempotent('@if (a) {\n<p>y</p>\n} else {\n<p>n</p>\n}');
   await expectIdempotent('@try\n{\n<p>t</p>\n}\nfinally\n{\n<p>f</p>\n}');
   await expectIdempotent('@section Nav {\n<li>x</li>\n}');
+  await expectIdempotent('@foreach (var p in ps)\n{\n@:Row: @p.Name\n}');
 });

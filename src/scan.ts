@@ -146,6 +146,8 @@ function skipWs(src: string, i: number): number {
   return i;
 }
 
+// Letters only — used to match Razor keywords (`if`, `code`, `section`, …),
+// which never contain digits. For C# identifiers use readCSharpIdent below.
 function readIdent(src: string, i: number): string {
   let j = i;
   while (j < src.length && isLetter(src[j])) j++;
