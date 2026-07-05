@@ -85,6 +85,21 @@ test('handles nested control blocks', async () => {
   );
 });
 
+test('treats quotes in body text as prose, not string delimiters', async () => {
+  // Regression: a lone apostrophe in prose made brace matching consume to EOF
+  // and the whole file went unformatted.
+  assert.equal(
+    await format("@if (a)\n{\n<p>it's fine</p>\n}\n<p>after</p>"),
+    "@if (a)\n{\n  <p>it's fine</p>\n}\n<p>after</p>\n",
+  );
+  // Quotes inside a tag are still honoured — a brace inside an attribute
+  // value must not affect the depth count.
+  assert.equal(
+    await format('@if (a)\n{\n<button data-x="{v}">ok</button>\n}'),
+    '@if (a)\n{\n  <button data-x="{v}">ok</button>\n}\n',
+  );
+});
+
 test('matches braces past a brace inside a string condition', async () => {
   assert.equal(
     await format('@if (s == "}")\n{\n<p>x</p>\n}'),

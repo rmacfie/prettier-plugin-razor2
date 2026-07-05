@@ -51,7 +51,22 @@ test('preserves PascalCase tags that collide with HTML element names', async () 
   );
 });
 
+test('leaves literal rz-N and data-razor markup untouched', async () => {
+  // Regression: a literal <rz-5> element alongside an aliased tag used to get
+  // its brackets doubled by the alias-restore fallback.
+  assert.equal(
+    await format('<rz-5>x</rz-5>\n<Card>\n<Header>t</Header>\n</Card>'),
+    '<rz-5>x</rz-5>\n<Card>\n  <Header>t</Header>\n</Card>\n',
+  );
+  // A user-written data-razor div whose id we never issued is kept as-is.
+  assert.equal(
+    await format('<div data-razor="99"></div>\n@if (a)\n{\n<p>x</p>\n}'),
+    '<div data-razor="99"></div>\n@if (a)\n{\n  <p>x</p>\n}\n',
+  );
+});
+
 test('is idempotent', async () => {
   await expectIdempotent('<div><p>a</p><p>b</p></div>');
   await expectIdempotent('<Card><Header>t</Header><Body>b</Body></Card>');
+  await expectIdempotent("@if (a)\n{\n<p>it's fine</p>\n}");
 });

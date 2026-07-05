@@ -36,6 +36,13 @@ const EOT = '\u0003';
 // A per-request safety valve so a wedged server can't hang Prettier forever.
 const REQUEST_TIMEOUT_MS = 10_000;
 
+// Kill every live pipe-files child when the process exits so no dotnet
+// process is orphaned. One process-level listener; children register below.
+const liveChildren = new Set<ChildProcessWithoutNullStreams>();
+process.on('exit', () => {
+  for (const child of liveChildren) child.kill();
+});
+
 /**
  * A persistent `csharpier pipe-files` process. Spawning `dotnet csharpier`
  * costs ~200 ms (runtime + Roslyn startup); keeping one warm process reduces
@@ -87,19 +94,20 @@ class CSharpierServer {
       // Could not spawn at all (not on PATH, …).
       this.available = false;
       this.child = null;
+      liveChildren.delete(child);
       warnUnavailable(this.command);
       this.settle(null);
     });
     child.on('close', () => {
       // Unexpected exit: fail the in-flight request; a later request respawns.
       this.child = null;
+      liveChildren.delete(child);
       this.settle(null);
     });
 
-    // Never keep the Node process alive while idle; kill on exit so no orphan
-    // dotnet process lingers.
+    // Never keep the Node process alive while idle.
     this.idle();
-    process.on('exit', () => child.kill());
+    liveChildren.add(child);
   }
 
   private request(filePath: string, content: string): Promise<string | null> {
@@ -109,7 +117,6 @@ class CSharpierServer {
     if (!child || !this.available) return Promise.resolve(null);
 
     return new Promise((resolve) => {
-      this.pendingResolve = resolve;
       this.busy();
       const timeout = setTimeout(() => {
         // Wedged server: kill it (close handler fails this request); the next
@@ -117,11 +124,11 @@ class CSharpierServer {
         child.kill();
       }, REQUEST_TIMEOUT_MS);
       timeout.unref();
-      const done = (payload: string | null) => {
+      // Only one request is ever in flight — `format` serializes via `queue`.
+      this.pendingResolve = (payload: string | null) => {
         clearTimeout(timeout);
         resolve(payload);
       };
-      this.pendingResolve = done;
       child.stdin.write(filePath + EOT + content + EOT);
     });
   }

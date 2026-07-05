@@ -47,7 +47,9 @@ components ride on Prettier for free; everything in bold is masked.
      when they start a line (so `foo@using.com` and mid-text uses are
      untouched).
    - **Inline placeholders** (a private-use text token that stays in the flow):
-     explicit `@(…)` expressions and `@* … *@` razor comments.
+     explicit `@(…)` expressions, `@* … *@` razor comments, and implicit
+     expressions containing string literals (whose quotes would end a
+     surrounding attribute value early).
    - **Tag aliases**: a PascalCase tag whose lowercase form is an HTML element
      (`<Header>`, `<Body>`, … — typically render-fragment parameters) is renamed
      to `rz-N` before HTML formatting, because Prettier would case-normalize it
@@ -138,9 +140,10 @@ inside strings and comments:
 
 - **C# bodies** (`@code`, `@{ }`): skip `"…"`, `@"…"`, `"""…"""` raw strings
   (incl. interpolated `$"""…"""` / `$$"""…"""`), `'…'`, `//`, `/* */`.
-- **Markup bodies** (control blocks): skip `"…"`, `'…'`, `<!-- -->`, `@* *@`,
-  and recurse C#-style over nested `@{ }` / `@code` / `@( )` so their inner
-  braces don't miscount.
+- **Markup bodies** (control blocks): skip `<!-- -->` and `@* *@` comments,
+  quoted attribute values (quotes count only _inside a tag_ — in text they are
+  prose, e.g. `it's`), and recurse C#-style over nested `@{ }` / `@( )` so their
+  inner braces don't miscount.
 
 ## `.razor` vs `.cshtml`
 

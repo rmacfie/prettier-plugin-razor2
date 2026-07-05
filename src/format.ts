@@ -102,7 +102,10 @@ async function restore(
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
     out += html.slice(last, m.index);
-    out += await renderBlock(blocks[Number(m[2])]!, m[1]!, textToDoc, options);
+    const block = blocks[Number(m[2])];
+    // An id we never issued is a literal `data-razor` div in the user's
+    // markup — keep it as-is.
+    out += block ? await renderBlock(block, m[1]!, textToDoc, options) : m[0];
     last = m.index + m[0].length;
   }
   out += html.slice(last);
@@ -137,14 +140,14 @@ export async function formatDocument(
   return restoreTagAliases(html, tagAliases);
 }
 
-// Put aliased PascalCase tag names (`<rz-N ...>`, `</rz-N>`) back.
+// Put aliased PascalCase tag names (`<rz-N ...>`, `</rz-N>`) back. An id with
+// no recorded alias is a literal `rz-N` element in the user's markup — keep it.
 function restoreTagAliases(html: string, tagAliases: string[]): string {
   if (tagAliases.length === 0) return html;
-  return html.replace(
-    /(<\/?)rz-(\d+)/g,
-    (whole, open: string, id: string) =>
-      open + (tagAliases[Number(id)] ?? whole),
-  );
+  return html.replace(/(<\/?)rz-(\d+)/g, (whole, open: string, id: string) => {
+    const name = tagAliases[Number(id)];
+    return name === undefined ? whole : open + name;
+  });
 }
 
 // Replace inline placeholder tokens with their verbatim originals.

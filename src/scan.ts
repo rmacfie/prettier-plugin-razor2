@@ -1,9 +1,11 @@
-// Scans Razor source and masks the constructs Prettier's HTML formatter can't
-// handle. Block-level constructs (code/control blocks, directive lines) become
-// `<div data-razor="N"></div>` placeholders; inline constructs (explicit `@(…)`
-// expressions and razor comments) become `N` text tokens so they
-// survive HTML formatting without forcing a line break. Originals are recorded
-// for later restoration. See DESIGN.md.
+// Scans Razor source and masks what Prettier's HTML formatter can't handle.
+// Block-level constructs (code blocks, control-flow blocks, directive lines)
+// become `<div data-razor="N"></div>` placeholders; inline constructs
+// (explicit `@(…)` expressions, `@* *@` comments, and implicit expressions
+// containing string literals) become `\uE000 N \uE001` text tokens so they
+// survive HTML formatting without forcing a line break. PascalCase tags that
+// collide case-insensitively with HTML element names are renamed to `rz-N`.
+// Originals are recorded for restoration after formatting. See DESIGN.md.
 
 import type { CSharpKind } from './csharp.ts';
 
@@ -342,10 +344,14 @@ function skipMarkupQuote(src: string, i: number): number {
 }
 
 // `i` at `{`; return index just past the matching `}` for a markup body,
-// stepping over comments, quoted strings and nested C# regions.
+// stepping over comments, quoted attribute values and nested C# regions.
 function matchBraceMarkup(src: string, i: number): number {
   let depth = 0;
   let j = i;
+  // Quotes delimit strings only inside a tag (attribute values). In text they
+  // are prose — a lone apostrophe in `<p>it's fine</p>` must not be treated as
+  // an unterminated string.
+  let inTag = false;
   while (j < src.length) {
     if (src[j] === '@' && src[j + 1] === '*') {
       j = skipUntil(src, j + 2, '*@');
@@ -363,12 +369,14 @@ function matchBraceMarkup(src: string, i: number): number {
       j = matchParen(src, j + 1);
       continue;
     }
-    if (src[j] === '"' || src[j] === "'") {
+    if (inTag && (src[j] === '"' || src[j] === "'")) {
       j = skipMarkupQuote(src, j);
       continue;
     }
     const c = src[j];
-    if (c === '{') depth++;
+    if (c === '<') inTag = true;
+    else if (c === '>') inTag = false;
+    else if (c === '{') depth++;
     else if (c === '}' && --depth === 0) return j + 1;
     j++;
   }
