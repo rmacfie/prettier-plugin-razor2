@@ -37,14 +37,14 @@ async function bench(
   label: string,
   source: string,
   filepath: string,
-  csharpierIntegration: boolean,
+  csharpierEnabled: boolean,
 ): Promise<Stats> {
-  const options: prettier.Options & { csharpierIntegration?: boolean } = {
+  const options: prettier.Options & { csharpierEnabled?: boolean } = {
     parser: 'razor',
     plugins: [pluginPath],
     printWidth: 80,
     filepath,
-    csharpierIntegration,
+    csharpierEnabled,
   };
 
   for (let i = 0; i < WARMUP; i++) await prettier.format(source, options);

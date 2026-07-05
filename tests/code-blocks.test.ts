@@ -43,18 +43,10 @@ test(
   },
 );
 
-test('leaves C# verbatim when the integration is disabled', async () => {
-  // csharpierIntegration: false is the recommended off switch.
+test('leaves C# verbatim when csharpierEnabled is false', async () => {
   assert.equal(
     await format('@code {\npublic int X{get;set;}\n}', {
-      csharpierIntegration: false,
-    }),
-    '@code {\npublic int X{get;set;}\n}\n',
-  );
-  // An empty command string also disables.
-  assert.equal(
-    await format('@code {\npublic int X{get;set;}\n}', {
-      csharpierIntegration: '',
+      csharpierEnabled: false,
     }),
     '@code {\npublic int X{get;set;}\n}\n',
   );

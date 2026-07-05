@@ -30,7 +30,7 @@ Optionally, disable the CSharpier integration to only format the HTML parts.
 ```json
 {
   "plugins": ["prettier-plugin-razor2"],
-  "csharpierIntegration": false
+  "csharpierEnabled": false
 }
 ```
 
@@ -38,9 +38,9 @@ Optionally, disable the CSharpier integration to only format the HTML parts.
 
 C# formatting requires the [CSharpier](https://csharpier.com) CLI on your `PATH`
 (`dotnet tool install csharpier`, invoked as `dotnet csharpier`). If it is not
-available, C# is left untouched and a one-time warning is printed. Control it
-with the `csharpierIntegration` option: `false` disables C# formatting (and
-silences the warning), a string overrides the command.
+available, C# is left untouched and a one-time warning is printed. Set
+`csharpierEnabled: false` to disable C# formatting (and silence the warning), or
+override the command with `csharpierCommand`.
 
 # Known limitations
 
@@ -69,12 +69,13 @@ or a dynamic `class="@GetCss()"` value) are not sorted.
 # Configuration
 
 This library follows the same configuration format as Prettier, which is
-documented [here](https://prettier.io/docs/en/configuration.html). It adds one
-option:
+documented [here](https://prettier.io/docs/en/configuration.html). It adds two
+options:
 
-| Option                 | Default              | Description                                                                                 |
-| ---------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
-| `csharpierIntegration` | `"dotnet csharpier"` | CSharpier integration for embedded C#. `false` disables it; a string overrides the command. |
+| Option             | Default              | Description                                                           |
+| ------------------ | -------------------- | --------------------------------------------------------------------- |
+| `csharpierEnabled` | `true`               | Format embedded C# with CSharpier. When `false`, C# is kept verbatim. |
+| `csharpierCommand` | `"dotnet csharpier"` | Command used to invoke the CSharpier CLI.                             |
 
 # Development
 

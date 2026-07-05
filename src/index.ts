@@ -37,19 +37,19 @@ export const parsers: Record<string, Parser<RazorRoot>> = {
 };
 
 export const options: Plugin['options'] = {
-  csharpierIntegration: {
+  csharpierEnabled: {
+    type: 'boolean',
+    category: 'Razor',
+    default: true,
+    description:
+      'Format embedded C# (@code/@functions/@{ } blocks) with CSharpier. ' +
+      'When false, C# is kept verbatim.',
+  },
+  csharpierCommand: {
     type: 'string',
     category: 'Razor',
     default: 'dotnet csharpier',
-    description:
-      'CSharpier integration for embedded C#. `false` disables it (C# kept ' +
-      'verbatim), a string overrides the command (default `dotnet csharpier`).',
-    // Accept booleans besides the declared string type. `exception` is how
-    // Prettier itself lets option values bypass schema validation; it is
-    // honoured at runtime but missing from the published typings.
-    ...({
-      exception: (value: unknown) => typeof value === 'boolean',
-    } as object),
+    description: 'Command used to invoke the CSharpier CLI.',
   },
 };
 
