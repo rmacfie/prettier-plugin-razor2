@@ -1,5 +1,15 @@
 # prettier-plugin-razor2
 
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Known limitations](#known-limitations)
+- [Composing with other plugins](#composing-with-other-plugins)
+- [Configuration](#configuration)
+- [Development](#development)
+
+## Description
+
 An opinionated formatter plugin for [Prettier](https://prettier.io) that adds
 support for Razor files — `.razor` (Blazor components) and `.cshtml` (MVC views
 and Razor Pages).
