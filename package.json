@@ -1,6 +1,6 @@
 {
   "name": "prettier-plugin-razor2",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Prettier plugin for Razor (Blazor) files — a fork of prettier-plugin-razor",
   "keywords": [
     "prettier",
