@@ -7,6 +7,7 @@ import {
   INLINE_CLOSE,
   INLINE_OPEN,
   blockPlaceholderRE,
+  linesInsideCSharpStrings,
   mask,
   type RazorBlock,
 } from './scan.ts';
@@ -32,11 +33,23 @@ function indentLines(text: string, prefix: string): string {
     .join('\n');
 }
 
+// Indent C# text, leaving lines that start inside a multi-line string literal
+// untouched — their leading whitespace is string content.
+function indentCSharpLines(text: string, prefix: string): string {
+  const insideString = linesInsideCSharpStrings(text);
+  return text
+    .split('\n')
+    .map((line, i) =>
+      line === '' || insideString.has(i) ? line : prefix + line,
+    )
+    .join('\n');
+}
+
 // Re-base a verbatim block (C# kept as-is) to `indent`. Top-level blocks
 // (indent === '') are emitted unchanged.
 function reindentVerbatim(text: string, indent: string): string {
   if (indent === '') return text;
-  return indentLines(text, indent);
+  return indentCSharpLines(text, indent);
 }
 
 async function renderBlock(
@@ -55,7 +68,7 @@ async function renderBlock(
       // CSharpier unavailable/disabled or couldn't parse the C#: keep verbatim.
       if (formatted === null) return reindentVerbatim(block.raw, indent);
       if (formatted === '') return `${indent}${block.opener}\n${indent}}`;
-      const body = indentLines(formatted, indent + indentUnit(options));
+      const body = indentCSharpLines(formatted, indent + indentUnit(options));
       return `${indent}${block.opener}\n${body}\n${indent}}`;
     }
     case 'control': {
@@ -108,18 +121,30 @@ export async function formatDocument(
 ): Promise<string> {
   if (source.trim() === '') return '';
 
-  const { masked, blocks } = mask(source);
+  const { masked, blocks, tagAliases } = mask(source);
 
   const htmlDoc = await textToDoc(masked, { parser: 'html' });
-  const html = doc.printer.printDocToString(htmlDoc, {
+  let html = doc.printer.printDocToString(htmlDoc, {
     printWidth: options.printWidth ?? 80,
     tabWidth: options.tabWidth ?? 2,
     useTabs: options.useTabs ?? false,
   }).formatted;
 
-  if (blocks.length === 0) return html;
-  const restored = await restore(html, blocks, textToDoc, options);
-  return resolveInline(restored, blocks);
+  if (blocks.length > 0) {
+    html = await restore(html, blocks, textToDoc, options);
+    html = resolveInline(html, blocks);
+  }
+  return restoreTagAliases(html, tagAliases);
+}
+
+// Put aliased PascalCase tag names (`<rz-N ...>`, `</rz-N>`) back.
+function restoreTagAliases(html: string, tagAliases: string[]): string {
+  if (tagAliases.length === 0) return html;
+  return html.replace(
+    /(<\/?)rz-(\d+)/g,
+    (whole, open: string, id: string) =>
+      open + (tagAliases[Number(id)] ?? whole),
+  );
 }
 
 // Replace inline placeholder tokens with their verbatim originals.

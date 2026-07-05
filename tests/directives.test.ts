@@ -43,6 +43,17 @@ test('protects an @model directive with generics (.cshtml)', async () => {
   );
 });
 
+test('does not treat a directive-named attribute at line start as a directive', async () => {
+  // Regression: Prettier wraps long attribute lists one-per-line, which put
+  // `@rendermode="..."` at line start; masking it as a directive line injected
+  // a placeholder inside the tag and destroyed the document on the next pass.
+  const source =
+    '<StockTicker\n  Feed="feed"\n  @rendermode="InteractiveServer"\n  @attributes="Extra"\n/>';
+  const out = await format(source);
+  assert.match(out, /@rendermode="InteractiveServer"/);
+  await expectIdempotent(source);
+});
+
 test('is idempotent', async () => {
   await expectIdempotent('@page "/x"\n@inherits Base<T>\n<h1>Hi</h1>');
 });

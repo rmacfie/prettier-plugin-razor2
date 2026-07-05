@@ -82,6 +82,22 @@ test('matches braces past strings, incl. raw string literals', async () => {
   );
 });
 
+test('never re-indents lines inside multi-line strings', async () => {
+  // Regression: block re-indentation injected spaces into the *content* of
+  // multi-line verbatim strings (and drifted raw strings between passes).
+  const verbatim =
+    '<div>\n@code {\nprivate const string S = @"line1\nline2";\n}\n</div>';
+  const out = await format(verbatim);
+  assert.match(out, /@"line1\nline2"/);
+  await expectIdempotent(verbatim);
+
+  const raw =
+    '@code {\nprivate const string T = """\n{ "kind": "test" }\n""";\n}';
+  const rawOut = await format(raw);
+  assert.match(rawOut, /\n\{ "kind": "test" \}\n/);
+  await expectIdempotent(raw);
+});
+
 test('handles @code blocks before, after and around markup', async () => {
   // Regression: the old formatter grabbed the first @code to EOF.
   assert.equal(

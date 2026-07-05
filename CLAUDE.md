@@ -87,6 +87,11 @@ the `html` parser (e.g. prettier-plugin-tailwindcss) compose with this one.
 - Templated Razor delegates (`.cshtml`): `@<tag>…</tag>` (e.g.
   `@Repeat(items, @<li>@item.Name</li>)`) isn't recognized and reflows awkwardly
   (content preserved, idempotent, just ugly).
+- `@switch` with several cases: bare `case X:`/`break;` lines are text to the
+  HTML formatter and can glue onto one line. Stable, just ugly; a real fix needs
+  C#-statement awareness inside control blocks.
+- Multi-line raw/verbatim string interiors and `@* *@` comment interiors keep
+  their exact original columns (their whitespace is content — never re-indent).
 - Control-flow conditions and inline expressions aren't run through CSharpier;
   only `@code`/`@functions`/`@{ }` block bodies are.
 - A construct whose body splits an HTML element across blocks

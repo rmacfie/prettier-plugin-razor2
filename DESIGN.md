@@ -48,10 +48,16 @@ components ride on Prettier for free; everything in bold is masked.
      untouched).
    - **Inline placeholders** (a private-use text token that stays in the flow):
      explicit `@(…)` expressions and `@* … *@` razor comments.
+   - **Tag aliases**: a PascalCase tag whose lowercase form is an HTML element
+     (`<Header>`, `<Body>`, … — typically render-fragment parameters) is renamed
+     to `rz-N` before HTML formatting, because Prettier would case-normalize it
+     to the HTML element — a semantic change in Razor. Restored afterwards.
 
    The scanner skips `@@` escapes and doesn't scan inside HTML comments;
    implicit expressions, razor attributes and components are **left in place** —
-   Prettier handles them.
+   Prettier handles them. A directive keyword immediately followed by `=` (e.g.
+   `@rendermode="…"` wrapped onto its own line by Prettier) is a directive
+   _attribute_, never a directive line.
 
 2. **Format as HTML** — run the masked source through Prettier's HTML printer
    (`textToDoc(masked, { parser: "html" })` → `printDocToString`). Block
@@ -148,6 +154,13 @@ covers both.
   (e.g. `@Repeat(items, @<li>@item.Name</li>)`) isn't recognized, so the markup
   is reflowed awkwardly. Content is preserved and the result is stable, just not
   pretty.
+- **`@switch` with several cases**: the bare `case X:`/`break;` lines are plain
+  text to the HTML formatter, so consecutive arms can glue onto one line
+  (`break; case Y:`). Stable and content-preserving, just ugly — a proper fix
+  needs C#-statement awareness inside control blocks.
+- **Multi-line `@* … *@` comments** are kept fully verbatim, including their
+  interior indentation, and multi-line **raw/verbatim string interiors** keep
+  their exact original columns (their leading whitespace is content).
 - Control-flow **conditions** (`@if (x)`) and inline expressions (`@(a+b)`) are
   not run through CSharpier — only the block bodies are.
 - A construct whose body splits an HTML element across blocks

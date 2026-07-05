@@ -76,7 +76,30 @@ export type RazorBlock =
 export interface MaskResult {
   masked: string;
   blocks: RazorBlock[];
+  /**
+   * PascalCase tag names that collide case-insensitively with HTML elements
+   * (e.g. a `<Header>` render fragment). Occurrence `n` was rewritten to `rz-n`
+   * so Prettier's HTML parser can't lowercase it; restored afterwards.
+   */
+  tagAliases: string[];
 }
+
+// Standard HTML element names. A PascalCase component tag whose lowercase form
+// appears here would be case-normalized by Prettier's HTML parser — a semantic
+// change in Razor, where <Header> is a component/fragment and <header> is HTML.
+const HTML_ELEMENTS = new Set(
+  (
+    'a abbr address area article aside audio b base bdi bdo blockquote body br ' +
+    'button canvas caption cite code col colgroup data datalist dd del details ' +
+    'dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 ' +
+    'h3 h4 h5 h6 head header hgroup hr html i iframe img input ins kbd label ' +
+    'legend li link main map mark menu meta meter nav noscript object ol ' +
+    'optgroup option output p param picture pre progress q rp rt ruby s samp ' +
+    'script search section select slot small source span strong style sub ' +
+    'summary sup table tbody td template textarea tfoot th thead time title tr ' +
+    'track u ul var video wbr'
+  ).split(' '),
+);
 
 const DIRECTIVES = new Set([
   'page',
@@ -124,6 +147,14 @@ function skipWs(src: string, i: number): number {
 function readIdent(src: string, i: number): string {
   let j = i;
   while (j < src.length && isLetter(src[j])) j++;
+  return src.slice(i, j);
+}
+
+// A plain tag name: letters and digits only. Stops at `.`/`-`/`:` etc., so
+// namespaced components (`<My.App.Header>`) never match an HTML element name.
+function readTagName(src: string, i: number): string {
+  let j = i;
+  while (j < src.length && /[A-Za-z0-9]/.test(src[j]!)) j++;
   return src.slice(i, j);
 }
 
@@ -200,6 +231,42 @@ function skipCSharpToken(src: string, i: number): number {
     return skipUntil(src, i + 2, '*/');
   }
   return -1;
+}
+
+/**
+ * 0-based indices of the lines in `text` that _start inside_ a multi-line C#
+ * string literal (verbatim or raw). Their leading whitespace is string content,
+ * so re-indentation must leave them untouched. Multi-line comments are not
+ * protected — shifting their interior is cosmetic, not a content change.
+ */
+export function linesInsideCSharpStrings(text: string): Set<number> {
+  const inside = new Set<number>();
+  let line = 0;
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === '\n') {
+      line++;
+      i++;
+      continue;
+    }
+    const end = skipCSharpToken(text, i);
+    if (end === -1) {
+      i++;
+      continue;
+    }
+    const isString =
+      text[i] === '"' ||
+      text[i] === "'" ||
+      (text[i] === '@' && text[i + 1] === '"');
+    for (let j = i; j < end; j++) {
+      if (text[j] === '\n') {
+        line++;
+        if (isString) inside.add(line);
+      }
+    }
+    i = end;
+  }
+  return inside;
 }
 
 // `i` at `open`; return index just past the matching `close`, skipping C#
@@ -404,6 +471,7 @@ function parseControl(
 /** Replace Razor block constructs with placeholders; see {@link MaskResult}. */
 export function mask(src: string): MaskResult {
   const blocks: RazorBlock[] = [];
+  const tagAliases: string[] = [];
   // Block placeholder: its own line, indent-aware on restore.
   const blockPlaceholder = (block: RazorBlock): string =>
     blockPlaceholderFor(blocks.push(block) - 1);
@@ -417,6 +485,29 @@ export function mask(src: string): MaskResult {
 
   while (i < n) {
     const c = src[i]!;
+
+    // Alias a PascalCase tag name that collides with an HTML element so the
+    // HTML parser can't case-normalize it. Only the name is rewritten; the
+    // attributes keep streaming through the scanner.
+    if (c === '<' && !src.startsWith('<!--', i)) {
+      const nameStart = src[i + 1] === '/' ? i + 2 : i + 1;
+      const name = readTagName(src, nameStart);
+      const after = src[nameStart + name.length];
+      const nameEnds =
+        after === undefined || after === '>' || after === '/' || isWs(after);
+      if (
+        name !== '' &&
+        nameEnds &&
+        /^[A-Z]/.test(name) &&
+        HTML_ELEMENTS.has(name.toLowerCase())
+      ) {
+        let idx = tagAliases.indexOf(name);
+        if (idx === -1) idx = tagAliases.push(name) - 1;
+        out += src.slice(i, nameStart) + `rz-${idx}`;
+        i = nameStart + name.length;
+        continue;
+      }
+    }
 
     // `@* … *@` razor comment — mask inline so its (possibly HTML-like)
     // contents aren't reformatted.
@@ -500,8 +591,14 @@ export function mask(src: string): MaskResult {
     }
 
     // Single-line directives — only at the start of a line, so mid-text uses
-    // and emails (`foo@using.com`) aren't misread as directives.
-    if (DIRECTIVES.has(kw) && atLineStart(src, i)) {
+    // and emails (`foo@using.com`) aren't misread as directives. A `=` right
+    // after the keyword means it's a directive *attribute* on its own line
+    // (Prettier wraps attributes), e.g. `@rendermode="..."` — not a directive.
+    if (
+      DIRECTIVES.has(kw) &&
+      atLineStart(src, i) &&
+      src[i + 1 + kw.length] !== '='
+    ) {
       let end = src.indexOf('\n', i);
       if (end === -1) end = n;
       out += blockPlaceholder({
@@ -517,5 +614,5 @@ export function mask(src: string): MaskResult {
     i++;
   }
 
-  return { masked: out, blocks };
+  return { masked: out, blocks, tagAliases };
 }

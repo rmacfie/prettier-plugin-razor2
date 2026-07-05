@@ -37,6 +37,21 @@ test('self-closes void elements', async () => {
   assert.equal(await format('<input type="text" >'), '<input type="text" />\n');
 });
 
+test('preserves PascalCase tags that collide with HTML element names', async () => {
+  // Regression: Prettier's HTML parser case-normalizes known elements, turning
+  // a <Header> render fragment into plain <header> markup.
+  assert.equal(
+    await format('<Card>\n<Header>t</Header>\n<Body><p>x</p></Body>\n</Card>'),
+    '<Card>\n  <Header>t</Header>\n  <Body><p>x</p></Body>\n</Card>\n',
+  );
+  // Namespaced components that merely start with a colliding word are left be.
+  assert.equal(
+    await format('<My.App.Header Title="x" />'),
+    '<My.App.Header Title="x" />\n',
+  );
+});
+
 test('is idempotent', async () => {
   await expectIdempotent('<div><p>a</p><p>b</p></div>');
+  await expectIdempotent('<Card><Header>t</Header><Body>b</Body></Card>');
 });

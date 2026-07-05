@@ -8,6 +8,8 @@ import * as path from 'node:path';
 
 import type { Options } from 'prettier';
 
+import { linesInsideCSharpStrings } from './scan.ts';
+
 /**
  * The C# context a snippet lives in. `@code`/`@functions` bodies are class
  * members (must be wrapped in a class); `@{ }` bodies are statements (valid on
@@ -225,16 +227,24 @@ export async function formatCSharp(
   );
   if (out === null) return null;
 
-  const lines = out.replace(/\n+$/, '').split('\n');
+  const trimmedOut = out.replace(/\n+$/, '');
+  const lines = trimmedOut.split('\n');
   const open = lines.findIndex((line, i) => i > 0 && line.trim() === '{');
   if (open === -1) return null;
   let close = lines.length - 1;
   while (close > open && lines[close]!.trim() !== '}') close--;
 
+  // Don't dedent lines inside multi-line string literals — their leading
+  // whitespace is string content.
+  const insideString = linesInsideCSharpStrings(trimmedOut);
   const unit = detectIndentUnit(out);
   const body = lines
     .slice(open + 1, close)
-    .map((line) => (line.startsWith(unit) ? line.slice(unit.length) : line));
+    .map((line, k) =>
+      !insideString.has(open + 1 + k) && line.startsWith(unit)
+        ? line.slice(unit.length)
+        : line,
+    );
   while (body.length && body[0]!.trim() === '') body.shift();
   while (body.length && body[body.length - 1]!.trim() === '') body.pop();
 

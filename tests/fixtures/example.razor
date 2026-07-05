@@ -1,63 +1,142 @@
-@page "/dashboard/{Section?}"
+@page "/inventory/{WarehouseId:int}"
+@layout AdminLayout
+@namespace MyApp.Components.Inventory
 @using System.Linq
 @using MyApp.Models
-@inject IWeatherService Weather
-@implements IDisposable
-@attribute [Authorize(Roles = "Admin")]
+@inject ILogger<InventoryPage> Logger
+@inject IInventoryService Inventory
+@implements IAsyncDisposable
+@attribute [Authorize(Roles = "Warehouse")]
 @rendermode InteractiveServer
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>Inventory — warehouse @WarehouseId</PageTitle>
 
-@* Header, a two-way bound filter, and a refresh button. *@
-<section class="dashboard">
-  <h1>Welcome, @user.Name!</h1>
+@* Toolbar: search box (immediate binding) and a guarded delete-all button. *@
+<header class="toolbar">
+  <input
+    @bind:get="query"
+    @bind:set="OnQueryChanged"
+    placeholder="Search stock..."
+  />
+  <button
+    class="danger"
+    @onclick="DeleteAll"
+    @onclick:preventDefault
+    @onclick:stopPropagation
+    disabled="@(!items.Any())"
+  >
+    Delete all
+  </button>
+</header>
 
-  <input @bind="filter" @bind:event="oninput" placeholder="Filter..." />
-  <button class="btn" @onclick="Refresh">Refresh</button>
+@if (loadError is not null)
+{
+  <Alert Severity="AlertSeverity.Error">@loadError</Alert>
+}
+else if (items.Count == 0)
+{
+  <p>
+    No stock in warehouse @WarehouseId. <a href="/inventory">Pick another</a>.
+  </p>
+}
+else
+{
+  <Grid TItem="StockItem" Items="items">
+    <Header>
+      <h2>@items.Count item(s), worth @(items.Sum(i => i.Value).ToString("C"))</h2>
+    </Header>
+    <Body>
+      @foreach (var item in items.Where(i => i.Matches(query)))
+      {
+        <GridRow @key="item.Sku">
+          <td>@item.Sku</td>
+          <td>@item.Name</td>
+          <td><InputNumber @bind-Value="item.Quantity" /></td>
+          <td><button @onclick="() => Remove(item.Sku)">Remove</button></td>
+        </GridRow>
+      }
+    </Body>
+  </Grid>
 
-  @if (forecasts is null)
+  @for (var page = 1; page <= pageCount; page++)
   {
-    <p><em>Loading...</em></p>
+    <PageLink Page="page" Current="page == currentPage" />
   }
-  else if (!forecasts.Any())
-  {
-    <p>No data for @(Section ?? "today").</p>
-  }
-  else
-  {
-    <table class="table">
-      <tbody>
-        @foreach (var f in forecasts.Where(f => f.TemperatureC > 0))
-        {
-          <tr @key="f.Date">
-            <td>@f.Date.ToShortDateString()</td>
-            <td>@f.TemperatureC &deg;C</td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  }
-</section>
+}
 
-<ChildComponent Title="Details" OnSave="HandleSave" @ref="child" />
+@try
+{
+  <StockTicker
+    Feed="feed"
+    @rendermode="InteractiveServer"
+    @attributes="TickerAttrs"
+  />
+}
+catch (FeedUnavailableException ex)
+{
+  <p class="muted">Ticker offline: @ex.Reason</p>
+}
+finally
+{
+  <span data-probe="ticker-rendered"></span>
+}
 
 @code {
   [Parameter]
-  public string? Section { get; set; }
+  public int WarehouseId { get; set; }
 
-  private WeatherForecast[]? forecasts;
-  private string filter = "";
-  private User user = new("Guest");
-  private ChildComponent? child;
+  private List<StockItem> items = [];
+  private string query = "";
+  private string? loadError;
+  private int currentPage = 1;
+  private int pageCount;
+  private FeedHandle? feed;
 
-  protected override async Task OnInitializedAsync()
+  private Dictionary<string, object> TickerAttrs =>
+    new() { ["role"] = "status" };
+
+  protected override async Task OnParametersSetAsync()
   {
-    forecasts = await Weather.GetForecastsAsync(Section);
+    try
+    {
+      items = await Inventory.GetStockAsync(WarehouseId);
+      pageCount = (items.Count + 49) / 50;
+    }
+    catch (Exception ex)
+    {
+      Logger.LogError(
+        ex,
+        "Failed to load warehouse {WarehouseId}",
+        WarehouseId
+      );
+      loadError = "Could not load stock.";
+    }
   }
 
-  private void Refresh() => forecasts = null;
+  private void OnQueryChanged(string value)
+  {
+    query = value.Trim();
+    currentPage = 1;
+  }
 
-  private Task HandleSave(FormModel model) => Weather.SaveAsync(model);
+  private async Task Remove(string sku)
+  {
+    await Inventory.RemoveAsync(WarehouseId, sku);
+    items.RemoveAll(i => i.Sku == sku);
+  }
 
-  public void Dispose() => forecasts = null;
+  private Task DeleteAll() => Inventory.ClearAsync(WarehouseId);
+
+  public async ValueTask DisposeAsync()
+  {
+    if (feed is not null)
+      await feed.DisposeAsync();
+  }
+}
+
+@code {
+  // A second @code block is legal and kept separate.
+  private const string ProbeTemplate = """
+{ "probe": "inventory", "v": 2 }
+""";
 }
