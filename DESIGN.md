@@ -97,9 +97,15 @@ control-block bodies recurse the same pipeline, inside blocks too. Covered by
 
 ## C# formatting (`src/csharp.ts`)
 
-C# is piped through CSharpier (`dotnet csharpier format --write-stdout`, stdin →
-stdout). CSharpier picks up the project's `.editorconfig` / `.csharpierrc` via
-an absolute `--stdin-path` in the source file's directory.
+C# is piped through a **persistent** `dotnet csharpier pipe-files` process:
+spawning CSharpier costs ~200 ms (runtime + Roslyn startup), so one lazily
+spawned process is kept warm and each request costs a few ms. Requests are
+serialized over its stdin/stdout (`path U+0003 content U+0003` → formatted
+`U+0003`; an empty response means the input was rejected). The child is unref'ed
+while idle (Node exits normally), killed on process exit, respawned after an
+unexpected death, and a 10 s per-request timeout guards against a wedged server.
+CSharpier picks up the project's `.editorconfig` / `.csharpierrc` via the
+absolute per-request path in the source file's directory.
 
 - `@{ }` bodies are **statements** — valid C# top-level statements, formatted
   directly.
