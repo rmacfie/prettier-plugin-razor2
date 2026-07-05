@@ -4,19 +4,35 @@ An opinionated formatter plugin for [Prettier](https://prettier.io) that adds
 support for Razor files — `.razor` (Blazor components) and `.cshtml` (MVC views
 and Razor Pages).
 
-Prettier is an opinionated code formatter. It enforces a consistent style by
-parsing your code and re-printing it, taking various rules into account.
+It formats the HTML in a Razor file by delegating to Prettier's own HTML
+formatter, and the C# in `@code`/`@functions`/`@{ }` blocks by delegating to
+[CSharpier](https://csharpier.com). Control-flow blocks (`@if`, `@foreach`, …)
+are re-indented in Allman style. Please try it out and provide feedback.
 
-> **Fork notice** This project is a fork of
-> [prettier-plugin-razor](https://github.com/KristinaPlusPlus/prettier-plugin-razor).
+# Getting Started
 
-# Notice
+Install the plugin and Prettier itself.
 
-This plugin is still under development. It formats the HTML in a Razor file by
-delegating to Prettier's own HTML formatter, and the C# in `@code`/`@functions`/
-`@{ }` blocks by delegating to [CSharpier](https://csharpier.com). Control-flow
-blocks (`@if`, `@foreach`, …) are re-indented in Allman style. Please try it out
-and provide feedback.
+```sh
+npm install --save-dev prettier prettier-plugin-razor2
+```
+
+Add to your Prettier config file:
+
+```json
+{
+  "plugins": ["prettier-plugin-razor2"]
+}
+```
+
+Optionally, disable the CSharpier integration to only format the HTML parts.
+
+```json
+{
+  "plugins": ["prettier-plugin-razor2"],
+  "csharpierCommand": ""
+}
+```
 
 ## C# formatting
 
@@ -26,20 +42,7 @@ available, C# is left untouched and a one-time warning is printed. Override the
 command — or disable C# formatting entirely — with the `csharpierCommand` option
 (set it to `""` to disable, which also silences the warning).
 
-# Installation
-
-    npm install --save-dev prettier prettier-plugin-razor2
-
-# Usage
-
-This plugin will be loaded automatically (if installed) by prettier to format
-files ending with `.razor` (Blazor components) or `.cshtml` (MVC views / Razor
-Pages). Using it is exactly the same as using prettier.
-
-Prettier [CLI usage docs](https://prettier.io/docs/en/cli.html)<br> Prettier
-[API usage docs](https://prettier.io/docs/en/api.html)
-
-## Known limitations
+# Known limitations
 
 - `@switch` blocks with several cases: the bare `case X:` / `break;` lines are
   plain text to the HTML formatter, so consecutive arms can end up glued onto
@@ -48,7 +51,7 @@ Prettier [CLI usage docs](https://prettier.io/docs/en/cli.html)<br> Prettier
 - Templated Razor delegates (`.cshtml`), e.g.
   `@Repeat(items, @<li>@item.Name</li>)`, are preserved but not reformatted.
 
-## Composing with other plugins
+# Composing with other plugins
 
 The HTML in your Razor files is formatted by Prettier's own HTML formatter, so
 other plugins that hook the `html` parser work on it too — including inside
@@ -86,3 +89,7 @@ JavaScript in `dist/`.
 Tests run the TypeScript sources directly via Node's native type stripping, so
 no build step is required to develop or test. The C# tests need the CSharpier
 CLI (`dotnet tool restore`); they skip automatically when it isn't available.
+
+> **Fork notice** This project started as a fork of
+> [prettier-plugin-razor](https://github.com/KristinaPlusPlus/prettier-plugin-razor),
+> but has since been mostly rewritten.
