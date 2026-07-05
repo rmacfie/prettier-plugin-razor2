@@ -19,7 +19,11 @@ export type CSharpKind = 'members' | 'statements';
 
 /** Prettier options plus this plugin's own settings. */
 export interface RazorOptions extends Options {
-  csharpierCommand?: string;
+  /**
+   * `false` disables C# formatting (kept verbatim); `true`/unset uses the
+   * default command; a string overrides the command.
+   */
+  csharpierIntegration?: string | boolean;
 }
 
 const DEFAULT_COMMAND = 'dotnet csharpier';
@@ -172,8 +176,8 @@ function warnUnavailable(command: string): void {
   console.warn(
     `[prettier-plugin-razor2] Could not run CSharpier ("${command}"); leaving ` +
       `embedded C# unformatted. Install it (\`dotnet tool install csharpier\`) ` +
-      `or set the "csharpierCommand" option to "" to disable C# formatting and ` +
-      `silence this warning.`,
+      `or set the "csharpierIntegration" option to false to disable C# ` +
+      `formatting and silence this warning.`,
   );
 }
 
@@ -187,12 +191,21 @@ function detectIndentUnit(text: string): string {
   return '  ';
 }
 
+// Resolve the csharpierIntegration option to a command, or null when disabled.
+function resolveCommand(options: RazorOptions): string | null {
+  const setting = options.csharpierIntegration;
+  if (setting === false) return null;
+  if (setting === true || setting === undefined) return DEFAULT_COMMAND;
+  const command = setting.trim();
+  return command === '' ? null : command;
+}
+
 async function runCSharpier(
   code: string,
   options: RazorOptions,
 ): Promise<string | null> {
-  const command = (options.csharpierCommand ?? DEFAULT_COMMAND).trim();
-  if (command === '') return null; // explicitly disabled
+  const command = resolveCommand(options);
+  if (command === null) return null; // integration disabled
 
   // An absolute path in the source file's directory so CSharpier resolves the
   // project's .editorconfig / .csharpierrc per request.

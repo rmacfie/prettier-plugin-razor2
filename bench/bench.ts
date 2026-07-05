@@ -37,14 +37,14 @@ async function bench(
   label: string,
   source: string,
   filepath: string,
-  csharpierCommand: string | undefined,
+  csharpierIntegration: boolean,
 ): Promise<Stats> {
-  const options: prettier.Options & { csharpierCommand?: string } = {
+  const options: prettier.Options & { csharpierIntegration?: boolean } = {
     parser: 'razor',
     plugins: [pluginPath],
     printWidth: 80,
     filepath,
-    ...(csharpierCommand !== undefined ? { csharpierCommand } : {}),
+    csharpierIntegration,
   };
 
   for (let i = 0; i < WARMUP; i++) await prettier.format(source, options);
@@ -71,6 +71,6 @@ for (const name of ['example.razor', 'example.cshtml']) {
   console.log(
     `\n=== ${name} (${source.length} chars, warmup ${WARMUP}, n=${ITERATIONS}) ===`,
   );
-  await bench(`${name} with CSharpier`, source, file, undefined);
-  await bench(`${name} without CSharpier`, source, file, '');
+  await bench(`${name} with CSharpier`, source, file, true);
+  await bench(`${name} without CSharpier`, source, file, false);
 }

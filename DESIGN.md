@@ -119,16 +119,18 @@ absolute per-request path in the source file's directory.
   their own, so they are wrapped in `class __CSharpierWrapper__ { … }`,
   formatted, then the class body is extracted and dedented.
 
-The command is the `csharpierCommand` option (default `dotnet csharpier`); set
-it to `""` to disable. Formatting never throws — every failure falls back to
-verbatim C#:
+The integration is the `csharpierIntegration` option: `false` disables it,
+`true`/unset uses the default `dotnet csharpier`, a string overrides the
+command. (The option is declared as a string but accepts booleans through
+Prettier's `exception` validation hook.) Formatting never throws — every failure
+falls back to verbatim C#:
 
 - **Not runnable** (not on PATH / not executable): warn once per command (a
   likely misconfiguration), then verbatim.
 - **Rejected** (CSharpier ran but exited non-zero, e.g. markup inside a code
   block, or a genuine syntax error): silent verbatim — these are frequently
   legitimate and can't be told apart from real errors.
-- **Disabled** (`csharpierCommand: ""`): silent verbatim, no warning.
+- **Disabled** (`csharpierIntegration: false`): silent verbatim, no warning.
 
 ## Brace matching
 

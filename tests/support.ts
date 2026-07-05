@@ -11,7 +11,7 @@ export const fixturesDir = path.join(here, 'fixtures');
 
 export function format(
   source: string,
-  options: prettier.Options & { csharpierCommand?: string } = {},
+  options: prettier.Options & { csharpierIntegration?: string | boolean } = {},
 ): Promise<string> {
   return prettier.format(source, {
     parser: 'razor',

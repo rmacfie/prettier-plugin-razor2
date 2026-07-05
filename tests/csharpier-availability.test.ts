@@ -25,11 +25,11 @@ async function captureWarnings(fn: () => Promise<void>): Promise<string[]> {
 test('falls back to verbatim and warns once when CSharpier is not runnable', async () => {
   // A command that certainly isn't on PATH, unique so its warning isn't
   // deduped against another test's.
-  const csharpierCommand = 'razor2-no-such-csharpier-xyz';
+  const csharpierIntegration = 'razor2-no-such-csharpier-xyz';
   let out1 = '';
   const warnings = await captureWarnings(async () => {
-    out1 = await format('@code {\nint x;\n}', { csharpierCommand });
-    await format('@code {\nint y;\n}', { csharpierCommand });
+    out1 = await format('@code {\nint x;\n}', { csharpierIntegration });
+    await format('@code {\nint y;\n}', { csharpierIntegration });
   });
 
   // C# is left exactly as written (never lost, never throws).
@@ -39,9 +39,9 @@ test('falls back to verbatim and warns once when CSharpier is not runnable', asy
   assert.match(warnings[0]!, /Could not run CSharpier/);
 });
 
-test('does not warn when C# formatting is disabled', async () => {
+test('does not warn when the integration is disabled', async () => {
   const warnings = await captureWarnings(async () => {
-    await format('@code {\nint x;\n}', { csharpierCommand: '' });
+    await format('@code {\nint x;\n}', { csharpierIntegration: false });
   });
   assert.equal(warnings.length, 0);
 });

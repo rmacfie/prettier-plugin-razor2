@@ -43,9 +43,9 @@ CSharpier**; this plugin owns only the Razor layer between them. Full rationale
 and the mask/format/restore pipeline are in [DESIGN.md](DESIGN.md).
 
 - `src/index.ts` — plugin shape (`languages`, parser `razor`, printer
-  `razor-ast`, the `csharpierCommand` option). The parser returns a trivial root
-  node; all work happens in the printer's async `embed` hook (the only place a
-  plugin may `await`).
+  `razor-ast`, the `csharpierIntegration` option). The parser returns a trivial
+  root node; all work happens in the printer's async `embed` hook (the only
+  place a plugin may `await`).
 - `src/format.ts` — the pipeline: `mask` the source → format the masked markup
   with Prettier HTML (`textToDoc(..., { parser: 'html' })` + `printDocToString`)
   → `restore` the masked constructs, recursing into control-block bodies.

@@ -30,7 +30,7 @@ Optionally, disable the CSharpier integration to only format the HTML parts.
 ```json
 {
   "plugins": ["prettier-plugin-razor2"],
-  "csharpierCommand": ""
+  "csharpierIntegration": false
 }
 ```
 
@@ -38,9 +38,9 @@ Optionally, disable the CSharpier integration to only format the HTML parts.
 
 C# formatting requires the [CSharpier](https://csharpier.com) CLI on your `PATH`
 (`dotnet tool install csharpier`, invoked as `dotnet csharpier`). If it is not
-available, C# is left untouched and a one-time warning is printed. Override the
-command — or disable C# formatting entirely — with the `csharpierCommand` option
-(set it to `""` to disable, which also silences the warning).
+available, C# is left untouched and a one-time warning is printed. Control it
+with the `csharpierIntegration` option: `false` disables C# formatting (and
+silences the warning), a string overrides the command.
 
 # Known limitations
 
@@ -72,9 +72,9 @@ This library follows the same configuration format as Prettier, which is
 documented [here](https://prettier.io/docs/en/configuration.html). It adds one
 option:
 
-| Option             | Default              | Description                                                                             |
-| ------------------ | -------------------- | --------------------------------------------------------------------------------------- |
-| `csharpierCommand` | `"dotnet csharpier"` | Command used to format embedded C# via CSharpier. Set to `""` to disable C# formatting. |
+| Option                 | Default              | Description                                                                                 |
+| ---------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
+| `csharpierIntegration` | `"dotnet csharpier"` | CSharpier integration for embedded C#. `false` disables it; a string overrides the command. |
 
 # Development
 
