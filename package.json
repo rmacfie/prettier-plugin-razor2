@@ -21,12 +21,6 @@
     "name": "Robert Macfie",
     "email": "robert@macfie.se"
   },
-  "contributors": [
-    {
-      "name": "Kristina Corrado",
-      "url": "https://github.com/KristinaPlusPlus/prettier-plugin-razor"
-    }
-  ],
   "type": "module",
   "exports": {
     ".": {
@@ -41,7 +35,7 @@
   ],
   "scripts": {
     "bench": "node bench/bench.ts",
-    "build": "tsc -p tsconfig.dist.json",
+    "build": "tsdown",
     "clean": "rm -rf dist",
     "csharpier": "dotnet csharpier",
     "format": "prettier --write .",
@@ -55,10 +49,15 @@
     "prettier": "3.9.4",
     "prettier-plugin-jsdoc": "1.8.1",
     "prettier-plugin-packagejson": "3.0.2",
+    "tsdown": "^0.22.3",
     "typescript": "6.0.3"
   },
   "peerDependencies": {
     "prettier": "^3.0.0"
+  },
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=20"
   },
   "devEngines": {
     "runtime": {

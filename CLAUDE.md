@@ -25,16 +25,24 @@ Just append args directly (`pnpm run node -e "..."`, `pnpm run node file.ts`).
 ## TypeScript / build
 
 - Source is TypeScript in `src/`; the published artifact is `dist/`
-  (gitignored).
+  (gitignored), bundled by tsdown (`tsdown.config.ts`) into a single
+  `index.js` + `index.d.ts`.
 - Relative imports use explicit `.ts` extensions. Node runs the sources directly
-  via native type stripping, and `tsc` rewrites the extensions to `.js` on build
-  (`rewriteRelativeImportExtensions`).
+  via native type stripping; tsdown resolves them when bundling.
 - Keep source to type-erasable syntax only (`erasableSyntaxOnly` is on) so Node
   can execute it without transpiling — no enums, no parameter properties, etc.
 - `noUncheckedIndexedAccess` is on: indexed access is `T | undefined`.
-- Two tsconfigs: `tsconfig.json` type-checks the whole project (src + tests,
-  `noEmit`); `tsconfig.dist.json` extends it to emit `src/ -> dist/` for
-  `build`.
+- `tsconfig.json` only type-checks (src + tests, `noEmit`); it plays no part in
+  the build.
+
+## Releasing
+
+CI (`.github/workflows/ci.yml`) runs typecheck + prettier check + tests (with
+CSharpier via `dotnet tool restore`) + build on pushes and PRs. To publish: bump
+`version` in package.json, commit, tag `vX.Y.Z`, `git push --follow-tags` — the
+release workflow publishes to npm via trusted publishing (OIDC, no token). First
+publish must be done manually, then the trusted publisher is configured on
+npmjs.com (see release.yml header).
 
 ## Architecture
 

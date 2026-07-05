@@ -89,17 +89,20 @@ options:
 
 # Development
 
-The plugin is written in TypeScript in `src/` and published as compiled
-JavaScript in `dist/`.
+The plugin is written in TypeScript in `src/` and published as a single
+[tsdown](https://tsdown.dev)-bundled file in `dist/`.
 
     pnpm install        # install dependencies
     pnpm test           # run the test suite (node --test)
     pnpm typecheck      # type-check without emitting
-    pnpm build          # compile src/ to dist/
+    pnpm build          # bundle src/ to dist/ with tsdown
 
 Tests run the TypeScript sources directly via Node's native type stripping, so
 no build step is required to develop or test. The C# tests need the CSharpier
 CLI (`dotnet tool restore`); they skip automatically when it isn't available.
+
+Releases: bump `version` in package.json, commit, tag `vX.Y.Z`, and
+`git push --follow-tags` — GitHub Actions runs the checks and publishes to npm.
 
 > **Fork notice** This project started as a fork of
 > [prettier-plugin-razor](https://github.com/KristinaPlusPlus/prettier-plugin-razor),

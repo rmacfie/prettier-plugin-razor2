@@ -1,6 +1,6 @@
 {
-  // Base config: type-checks the whole project (src + tests) without emitting.
-  // `tsconfig.dist.json` extends this to build the published package.
+  // Type-checks the whole project (src + tests) without emitting; the package
+  // build is done by tsdown (see tsdown.config.ts).
   "compilerOptions": {
     "target": "esnext",
     "module": "nodenext",
@@ -9,14 +9,10 @@
     "types": ["node"],
 
     "noEmit": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
 
-    // Author with explicit `.ts` specifiers (needed for Node's native TS
-    // execution) and let tsc rewrite them to `.js` in the emitted output.
+    // Author with explicit `.ts` specifiers — needed for Node's native TS
+    // execution; tsdown resolves them when bundling.
     "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true,
 
     // Keep the source to type-erasable syntax so Node can run it directly.
     "erasableSyntaxOnly": true,

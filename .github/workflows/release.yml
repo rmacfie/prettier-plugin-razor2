@@ -1,0 +1,46 @@
+# Publishes to npm when a v* tag is pushed:
+#
+#   1. bump "version" in package.json, commit
+#   2. git tag vX.Y.Z && git push --follow-tags
+#
+# Auth uses npm trusted publishing (OIDC) — no token secret. One-time setup on
+# npmjs.com after the first (manual) publish: package Settings -> Trusted
+# Publisher -> GitHub Actions, repository rmacfie/prettier-plugin-razor2,
+# workflow release.yml. Provenance is attached automatically.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm trusted publishing / provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - run: pnpm install --frozen-lockfile
+      - run: dotnet tool restore
+
+      - run: pnpm typecheck
+      - run: pnpm exec prettier --check .
+      - run: pnpm test
+
+      # prepublishOnly runs clean + build.
+      - run: npm publish
