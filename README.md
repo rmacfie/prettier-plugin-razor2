@@ -10,9 +10,8 @@
 
 ## Description
 
-An opinionated formatter plugin for [Prettier](https://prettier.io) that adds
-support for Razor files — `.razor` (Blazor components) and `.cshtml` (MVC views
-and Razor Pages).
+A plugin for [Prettier](https://prettier.io) that adds support for Razor files —
+`.razor` (Blazor components) and `.cshtml` (MVC views and Razor Pages).
 
 It formats the HTML in a Razor file by delegating to Prettier's own HTML
 formatter, and the C# in `@code`/`@functions`/`@{ }` blocks by delegating to
