@@ -1,14 +1,5 @@
 # prettier-plugin-razor2
 
-<br>
-<table>
-  <tr>
-    <td><img src="https://prettier.io/icon.png" alt="Prettier icon" width="128" height="128"></td>
-    <td><img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/Blazor.png" alt="Blazor icon" width="128" height="128"></td>
-  </tr>
-</table>
-<br>
-
 An opinionated formatter plugin for [Prettier](https://prettier.io) that adds
 support for Razor files — `.razor` (Blazor components) and `.cshtml` (MVC views
 and Razor Pages).
@@ -45,11 +36,17 @@ This plugin will be loaded automatically (if installed) by prettier to format
 files ending with `.razor` (Blazor components) or `.cshtml` (MVC views / Razor
 Pages). Using it is exactly the same as using prettier.
 
-Known limitation: templated Razor delegates (`.cshtml`), e.g.
-`@Repeat(items, @<li>@item.Name</li>)`, are preserved but not reformatted.
-
 Prettier [CLI usage docs](https://prettier.io/docs/en/cli.html)<br> Prettier
 [API usage docs](https://prettier.io/docs/en/api.html)
+
+## Known limitations
+
+- `@switch` blocks with several cases: the bare `case X:` / `break;` lines are
+  plain text to the HTML formatter, so consecutive arms can end up glued onto
+  one line (`break; case Y:`). The output is stable and nothing is lost — it
+  just isn't pretty yet.
+- Templated Razor delegates (`.cshtml`), e.g.
+  `@Repeat(items, @<li>@item.Name</li>)`, are preserved but not reformatted.
 
 ## Composing with other plugins
 
