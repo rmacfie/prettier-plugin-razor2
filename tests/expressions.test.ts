@@ -51,6 +51,20 @@ test('does not treat an email address as a transition', async () => {
   );
 });
 
+test('preserves an implicit expression with quoted arguments in an attribute', async () => {
+  // Regression: the inner quotes ended the surrounding attribute value for
+  // the HTML parser and derailed the whole document. Such expressions are
+  // masked inline like explicit @(...) ones.
+  assert.equal(
+    await format('<a href="@Url.Action("Create")">go</a>'),
+    '<a href="@Url.Action("Create")">go</a>\n',
+  );
+  assert.equal(
+    await format('<p>Total: @Fmt(x, "C") kr</p>'),
+    '<p>Total: @Fmt(x, "C") kr</p>\n',
+  );
+});
+
 test('leaves an @await expression in place', async () => {
   assert.equal(
     await format('<p>@await Foo("a", "b")</p>'),

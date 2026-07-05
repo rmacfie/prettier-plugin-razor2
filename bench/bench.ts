@@ -68,6 +68,9 @@ async function bench(
 for (const name of ['example.razor', 'example.cshtml']) {
   const file = path.join(fixturesDir, name);
   const source = fs.readFileSync(file, 'utf8');
+  if (source.trim().length < 500) {
+    throw new Error(`${name} looks truncated or empty — nothing to benchmark`);
+  }
   console.log(
     `\n=== ${name} (${source.length} chars, warmup ${WARMUP}, n=${ITERATIONS}) ===`,
   );

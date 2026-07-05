@@ -18,8 +18,13 @@ import {
   pluginPath,
 } from './support.ts';
 
-const fixture = (name: string): string =>
-  fs.readFileSync(path.join(fixturesDir, name), 'utf8');
+const fixture = (name: string): string => {
+  const source = fs.readFileSync(path.join(fixturesDir, name), 'utf8');
+  // Guard against a vacuous pass: an emptied fixture once slipped through
+  // because format('') === ''.
+  assert.ok(source.trim().length > 500, `${name} looks truncated or empty`);
+  return source;
+};
 
 test('the .razor showcase fixture is already canonical', async () => {
   const source = fixture('example.razor');
@@ -29,6 +34,26 @@ test('the .razor showcase fixture is already canonical', async () => {
 test('the .cshtml showcase fixture is already canonical', async () => {
   const source = fixture('example.cshtml');
   assert.equal(await format(source), source);
+});
+
+test('never yields empty output for non-empty input', async () => {
+  // Regression: a construct the HTML parser chokes on used to make the embed
+  // fail and Prettier fall back to an EMPTY document — silent data loss. The
+  // fail-safe must return the source unchanged instead.
+  const sources = [
+    '<a href="@Url.Action("Create")">go</a>', // quoted args in an attribute
+    '<a href="@F(">broken</a>', // unbalanced parens swallow to EOF
+    '<div', // plain broken markup
+  ];
+  for (const source of sources) {
+    const out = await format(source).catch(() => null);
+    if (out !== null) {
+      assert.ok(
+        out.trim().length > 0,
+        `empty output for ${JSON.stringify(source)}`,
+      );
+    }
+  }
 });
 
 test('is idempotent across construct categories', async () => {

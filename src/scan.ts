@@ -158,6 +158,40 @@ function readTagName(src: string, i: number): string {
   return src.slice(i, j);
 }
 
+// A C# identifier (letters, digits, underscore; must start with a letter/_).
+function readCSharpIdent(src: string, i: number): string {
+  if (!/[A-Za-z_]/.test(src[i] ?? '')) return '';
+  let j = i + 1;
+  while (j < src.length && /[A-Za-z0-9_]/.test(src[j]!)) j++;
+  return src.slice(i, j);
+}
+
+// The extent of an implicit expression starting at the `@` at `at`:
+// @Ident followed by any chain of `.Ident`, `?.Ident`, `(...)` or `[...]`
+// (with C# strings skipped inside the delimiters).
+function readImplicitExpression(src: string, at: number): number {
+  let i = at + 1 + readCSharpIdent(src, at + 1).length;
+  for (;;) {
+    const c = src[i];
+    if (c === '(') {
+      i = matchParen(src, i);
+    } else if (c === '[') {
+      i = matchDelimited(src, i, '[', ']');
+    } else if (c === '.' && readCSharpIdent(src, i + 1) !== '') {
+      i += 1 + readCSharpIdent(src, i + 1).length;
+    } else if (
+      c === '?' &&
+      src[i + 1] === '.' &&
+      readCSharpIdent(src, i + 2) !== ''
+    ) {
+      i += 2 + readCSharpIdent(src, i + 2).length;
+    } else {
+      break;
+    }
+  }
+  return i;
+}
+
 // Whether `i` is the first non-whitespace position on its line. Directives are
 // line-level, so this distinguishes `@using X` (directive) from an `@using`
 // that appears mid-text or inside an email like `foo@using.com`.
@@ -609,7 +643,23 @@ export function mask(src: string): MaskResult {
       continue;
     }
 
-    // Plain inline expression — leave for the HTML formatter.
+    // Implicit expression. One containing a string literal must be masked:
+    // inside a quoted HTML attribute (`href="@Url.Action("Create")"`) the
+    // inner quotes would end the attribute early and derail the HTML parser.
+    // Quote-free expressions stay in place — Prettier handles them.
+    if (/[A-Za-z_]/.test(src[i + 1] ?? '')) {
+      const end = readImplicitExpression(src, i);
+      const text = src.slice(i, end);
+      if (text.includes('"') || text.includes("'")) {
+        out += inlinePlaceholder({ kind: 'inline', text });
+      } else {
+        out += text;
+      }
+      i = end;
+      continue;
+    }
+
+    // A bare `@` with nothing we recognize — leave for the HTML formatter.
     out += c;
     i++;
   }

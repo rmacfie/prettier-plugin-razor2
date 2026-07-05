@@ -1,0 +1,82 @@
+@page "/orders"
+@model OrderListModel
+@using MyApp.Orders
+@inject IClock Clock
+@{
+  ViewData["Title"] = "Orders";
+  Layout = "_Layout";
+  var overdue = Model.Orders.Count(o => o.DueBy < Clock.Now);
+}
+
+@section Head
+{
+  <meta name="robots" content="noindex" />
+}
+
+<h1>@ViewData["Title"] <small>(@overdue overdue)</small></h1>
+
+@* Contact line: the @@ escape keeps a literal at-sign in the address. *@
+<p>Questions? Write to orders@@example.com or call @Model.SupportPhone.</p>
+
+@using (Html.BeginForm("Search", "Orders", FormMethod.Get))
+{
+  <input asp-for="Query" class="form-control" />
+  <button type="submit">Search</button>
+}
+
+@if (!Model.Orders.Any())
+{
+  <p>Nothing here. <a href="@Url.Action("Create")">Create the first order</a>.</p>
+}
+else
+{
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Ref</th>
+        <th>Status</th>
+        <th>Due</th>
+      </tr>
+    </thead>
+    <tbody>
+      @foreach (var order in Model.Orders)
+      {
+        <tr class="@(order.DueBy < Clock.Now ? "overdue" : "")">
+          <td><a asp-action="Details" asp-route-id="@order.Id">@order.Reference</a></td>
+          <td>
+            @if (order.IsPaid)
+            {
+              <text>Paid @order.PaidAt?.ToShortDateString()</text>
+            }
+            else
+            {
+              @:Awaiting payment
+            }
+          </td>
+          <td>@Format(order.DueBy)</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @while (Model.Pager.HasMore)
+  {
+    <PagePlaceholder Index="Model.Pager.Next()" />
+  }
+}
+
+<environment include="Development">
+  <pre data-debug>@await Html.PartialAsync("_DebugInfo", Model)</pre>
+</environment>
+
+<partial name="_Footer" />
+
+@functions {
+  private string Format(DateTime due) =>
+    due < Clock.Now ? $"{due:d} (overdue)" : due.ToString("d");
+}
+
+@section Scripts
+{
+  <script src="~/js/orders.js" asp-append-version="true"></script>
+}

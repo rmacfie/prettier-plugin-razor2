@@ -53,6 +53,15 @@ export const options: Plugin['options'] = {
   },
 };
 
+function warnUnformatted(filepath: string | undefined, error?: unknown): void {
+  const where = filepath ? ` (${filepath})` : '';
+  const why = error instanceof Error ? `: ${error.message.split('\n')[0]}` : '';
+  console.warn(
+    `[prettier-plugin-razor2] Could not format this file${where}; leaving it ` +
+      `unchanged${why}`,
+  );
+}
+
 export const printers: Record<string, Printer<RazorRoot>> = {
   'razor-ast': {
     // All work happens in `embed` (the only async printer hook); `print` is
@@ -67,8 +76,25 @@ export const printers: Record<string, Printer<RazorRoot>> = {
         _embedPath,
         options: Options,
       ): Promise<Doc> => {
-        const formatted = await formatDocument(node.source, textToDoc, options);
-        return formatted.replace(/\s+$/, '') + '\n';
+        // Fail-safe: a formatter must never destroy content. If the pipeline
+        // throws (Prettier silently falls back to `print`, i.e. an EMPTY
+        // document) or somehow yields nothing for a non-empty input, return
+        // the source unformatted instead.
+        try {
+          const formatted = await formatDocument(
+            node.source,
+            textToDoc,
+            options,
+          );
+          if (formatted.trim() === '' && node.source.trim() !== '') {
+            warnUnformatted(options.filepath);
+            return node.source;
+          }
+          return formatted.replace(/\s+$/, '') + '\n';
+        } catch (error) {
+          warnUnformatted(options.filepath, error);
+          return node.source;
+        }
       };
     },
   },
