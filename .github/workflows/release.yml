@@ -1,7 +1,9 @@
 # Publishes to npm when a v* tag is pushed:
 #
 #   1. bump "version" in package.json, commit
-#   2. git tag vX.Y.Z && git push --follow-tags
+#   2. git tag vX.Y.Z && git push origin main vX.Y.Z
+#
+# (Not `--follow-tags` — it only pushes annotated tags, not lightweight ones.)
 #
 # Auth uses npm trusted publishing (OIDC) — no token secret. One-time setup on
 # npmjs.com after the first (manual) publish: package Settings -> Trusted
@@ -41,6 +43,17 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm exec prettier --check .
       - run: pnpm test
+
+      # devEngines pins pnpm/node for local development, but npm enforces it
+      # and refuses to run (EBADDEVENGINES). It is dev-only metadata with no
+      # place in the published manifest — drop it before publishing.
+      - run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            delete pkg.devEngines;
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
 
       # prepublishOnly runs clean + build.
       - run: npm publish

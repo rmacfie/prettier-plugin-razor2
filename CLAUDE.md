@@ -39,10 +39,11 @@ Just append args directly (`pnpm run node -e "..."`, `pnpm run node file.ts`).
 
 CI (`.github/workflows/ci.yml`) runs typecheck + prettier check + tests (with
 CSharpier via `dotnet tool restore`) + build on pushes and PRs. To publish: bump
-`version` in package.json, commit, tag `vX.Y.Z`, `git push --follow-tags` — the
-release workflow publishes to npm via trusted publishing (OIDC, no token). First
-publish must be done manually, then the trusted publisher is configured on
-npmjs.com (see release.yml header).
+`version` in package.json, commit, then
+`git tag vX.Y.Z && git push origin main vX.Y.Z` (not `--follow-tags`, which
+skips lightweight tags) — the release workflow publishes to npm via trusted
+publishing (OIDC, no token). The workflow strips `devEngines` before
+`npm publish` (npm refuses to run under a pnpm packageManager pin).
 
 ## Architecture
 

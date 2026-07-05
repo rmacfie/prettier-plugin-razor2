@@ -100,8 +100,9 @@ Tests run the TypeScript sources directly via Node's native type stripping, so
 no build step is required to develop or test. The C# tests need the CSharpier
 CLI (`dotnet tool restore`); they skip automatically when it isn't available.
 
-Releases: bump `version` in package.json, commit, tag `vX.Y.Z`, and
-`git push --follow-tags` — GitHub Actions runs the checks and publishes to npm.
+Releases: bump `version` in package.json, commit, then
+`git tag vX.Y.Z && git push origin main vX.Y.Z` — GitHub Actions runs the
+checks and publishes to npm.
 
 > **Fork notice** This project started as a fork of
 > [prettier-plugin-razor](https://github.com/KristinaPlusPlus/prettier-plugin-razor),
