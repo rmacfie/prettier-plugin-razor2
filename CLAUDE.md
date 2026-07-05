@@ -43,8 +43,8 @@ CSharpier via `dotnet tool restore`) + build on pushes and PRs. To publish: bump
 `git tag vX.Y.Z && git push origin main vX.Y.Z` (not `--follow-tags`, which
 skips lightweight tags) — the release workflow publishes to npm via trusted
 publishing (OIDC, no token) using `pnpm publish` (needs the OIDC fix from
-pnpm/pnpm#11526, in pnpm releases since May 2026; `npm publish` is not an
-option — it rejects our pnpm devEngines pin with EBADDEVENGINES).
+pnpm/pnpm#11526, in pnpm releases since May 2026; `npm publish` is not an option
+— it rejects our pnpm devEngines pin with EBADDEVENGINES).
 
 ## Architecture
 
