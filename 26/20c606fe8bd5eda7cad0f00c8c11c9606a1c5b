@@ -1,0 +1,16 @@
+.github/workflows/ci.yml
+  h_26c32ee947709d 11-13
+tests/csharpier-launch.test.ts
+  h_26c32ee947709d 52-56,58,448,462-469,535,549-556
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2620c606fe8bd5eda7cad0f00c8c11c9606a1c5b",
+  "prompts": {},
+  "humans": {
+    "h_26c32ee947709d": {
+      "author": "Robert Macfie <robert@macfie.se>"
+    }
+  }
+}
