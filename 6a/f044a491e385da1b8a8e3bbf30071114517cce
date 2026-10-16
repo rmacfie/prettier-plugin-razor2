@@ -1,0 +1,24 @@
+.gitattributes
+  h_26c32ee947709d 1-4
+.github/workflows/ci.yml
+  h_26c32ee947709d 10-13
+CLAUDE.md
+  h_26c32ee947709d 67-76
+README.md
+  h_26c32ee947709d 48-64
+src/csharp.ts
+  h_26c32ee947709d 2-5,8-9,31-40,51-54,62-65,74-77,81-100,104-106,111-122,129-131,133,137-140,146-152,159-163,165-168,170,172-173,176-205,213-222,225,233-236,278,280-283,285-286,291-292,294-300,302-305,319-322,324-392,402-403,407-415
+tests/csharpier-launch.test.ts
+  h_26c32ee947709d 1-623
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6af044a491e385da1b8a8e3bbf30071114517cce",
+  "prompts": {},
+  "humans": {
+    "h_26c32ee947709d": {
+      "author": "Robert Macfie <robert@macfie.se>"
+    }
+  }
+}
