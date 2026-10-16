@@ -44,14 +44,18 @@ const PIPE_FILES_FAKE = `
     const response =
       content.slice(0, close) + '// CWD ' + process.cwd() + '\\n' +
       content.slice(close);
-    process.stdout.write(response + EOT);
     served++;
     if (marker && served === 1) {
       process.on('exit', () => {
         try { require('node:fs').writeFileSync(marker, 'x'); } catch {}
       });
-      setTimeout(() => process.exit(1), 30);
+      // Crash after the answer, deterministically: exit once the response
+      // has been flushed, never on a wall-clock timer (a slow runner could
+      // kill the process before it ever answered).
+      process.stdout.write(response + EOT, () => process.exit(1));
+      return;
     }
+    process.stdout.write(response + EOT);
   });
 `;
 
@@ -440,8 +444,8 @@ test(
     process.on('exit', () => {
       try { fs.writeFileSync(${JSON.stringify(exitMarker)}, 'x'); } catch {}
     });
-    setTimeout(() => process.exit(1), 30);
   }
+  let served = 0;
   let buf = '';
   process.stdin.on('data', (chunk) => {
     buf += chunk;
@@ -455,6 +459,14 @@ test(
     const response =
       content.slice(0, close) + '// CWD ' + process.cwd() + '\\n' +
       content.slice(close);
+    served++;
+    // Invocation 0 crashes after its answer, deterministically: exit once
+    // the response is flushed, never on a wall-clock timer (a slow runner
+    // could kill the process before it ever answered).
+    if (n === 0 && served === 1) {
+      process.stdout.write(response + EOT, () => process.exit(1));
+      return;
+    }
     process.stdout.write(response + EOT);
   });
 `,
@@ -520,7 +532,7 @@ test(
   process.on('exit', () => {
     try { fs.writeFileSync(${JSON.stringify(exitMarker)}, 'x'); } catch {}
   });
-  setTimeout(() => process.exit(1), 30);
+  let served = 0;
   let buf = '';
   process.stdin.on('data', (chunk) => {
     buf += chunk;
@@ -534,6 +546,14 @@ test(
     const response =
       content.slice(0, close) + '// CWD ' + process.cwd() + '\\n' +
       content.slice(close);
+    served++;
+    // Invocation 0 crashes after its answer, deterministically: exit once
+    // the response is flushed, never on a wall-clock timer (a slow runner
+    // could kill the process before it ever answered).
+    if (served === 1) {
+      process.stdout.write(response + EOT, () => process.exit(1));
+      return;
+    }
     process.stdout.write(response + EOT);
   });
 `,
