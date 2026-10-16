@@ -49,11 +49,13 @@ const PIPE_FILES_FAKE = `
       process.on('exit', () => {
         try { require('node:fs').writeFileSync(marker, 'x'); } catch {}
       });
-      // Crash after the answer, deterministically: exit once the response
-      // has been flushed, never on a wall-clock timer (a slow runner could
-      // kill the process before it ever answered).
-      process.stdout.write(response + EOT, () => process.exit(1));
-      return;
+      // Crash after the answer. Arm the exit only once the answer has been
+      // written — never at startup (a slow runner would kill the process
+      // before it answered) and never from the write callback (the parent
+      // can process the exit before the data). The delay just gives the
+      // parent time to read the flushed response; the marker file syncs the
+      // test, so the length isn't load-bearing.
+      setTimeout(() => process.exit(1), 100);
     }
     process.stdout.write(response + EOT);
   });
@@ -95,6 +97,15 @@ async function waitUntil(cond: () => boolean, ms = 5_000): Promise<void> {
     if (Date.now() > deadline) throw new Error('condition not met in time');
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
+}
+
+// After a fake's exit marker appears, the parent may not have processed the
+// child's close event yet (the marker is written by the child's own exit
+// handler, before the parent sees the exit). Give the parent's event loop a
+// beat before the next format, so its request reaches a fresh process instead
+// of the dying one's stdin (EPIPE — silently dropped, request lost).
+async function afterChildExitSettled(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 50));
 }
 
 // A per-test scratch root with a manifest folder (and a fake `dotnet` in
@@ -396,6 +407,7 @@ test(
             });
             // Wait for the fake to crash after its first answer.
             await waitUntil(() => fs.existsSync(marker));
+            await afterChildExitSettled();
             out2 = await format(SOURCE, {
               filepath: path.join(s.manifestDir, 'Other.razor'),
             });
@@ -440,11 +452,6 @@ test(
     process.stderr.write('crashing before answering\\n');
     process.exit(1);
   }
-  if (n === 0) {
-    process.on('exit', () => {
-      try { fs.writeFileSync(${JSON.stringify(exitMarker)}, 'x'); } catch {}
-    });
-  }
   let served = 0;
   let buf = '';
   process.stdin.on('data', (chunk) => {
@@ -460,12 +467,17 @@ test(
       content.slice(0, close) + '// CWD ' + process.cwd() + '\\n' +
       content.slice(close);
     served++;
-    // Invocation 0 crashes after its answer, deterministically: exit once
-    // the response is flushed, never on a wall-clock timer (a slow runner
-    // could kill the process before it ever answered).
+    // Invocation 0 crashes after its answer. Arm the exit only once the
+    // answer has been written — never at startup (a slow runner would kill
+    // the process before it answered) and never from the write callback
+    // (the parent can process the exit before the data). The delay just
+    // gives the parent time to read the flushed response; the marker file
+    // syncs the test, so the length isn't load-bearing.
     if (n === 0 && served === 1) {
-      process.stdout.write(response + EOT, () => process.exit(1));
-      return;
+      process.on('exit', () => {
+        try { fs.writeFileSync(${JSON.stringify(exitMarker)}, 'x'); } catch {}
+      });
+      setTimeout(() => process.exit(1), 100);
     }
     process.stdout.write(response + EOT);
   });
@@ -482,6 +494,7 @@ test(
           });
           // Invocation 1 crashed after its answer.
           await waitUntil(() => fs.existsSync(exitMarker));
+          await afterChildExitSettled();
           // Invocation 2 crashes before answering: this request fails and
           // falls back to verbatim.
           out2 = await format(SOURCE, {
@@ -529,9 +542,6 @@ test(
     process.stderr.write('stale manifest, crashing before answering\\n');
     process.exit(1);
   }
-  process.on('exit', () => {
-    try { fs.writeFileSync(${JSON.stringify(exitMarker)}, 'x'); } catch {}
-  });
   let served = 0;
   let buf = '';
   process.stdin.on('data', (chunk) => {
@@ -547,12 +557,17 @@ test(
       content.slice(0, close) + '// CWD ' + process.cwd() + '\\n' +
       content.slice(close);
     served++;
-    // Invocation 0 crashes after its answer, deterministically: exit once
-    // the response is flushed, never on a wall-clock timer (a slow runner
-    // could kill the process before it ever answered).
+    // Invocation 0 crashes after its answer. Arm the exit only once the
+    // answer has been written — never at startup (a slow runner would kill
+    // the process before it answered) and never from the write callback
+    // (the parent can process the exit before the data). The delay just
+    // gives the parent time to read the flushed response; the marker file
+    // syncs the test, so the length isn't load-bearing.
     if (served === 1) {
-      process.stdout.write(response + EOT, () => process.exit(1));
-      return;
+      process.on('exit', () => {
+        try { fs.writeFileSync(${JSON.stringify(exitMarker)}, 'x'); } catch {}
+      });
+      setTimeout(() => process.exit(1), 100);
     }
     process.stdout.write(response + EOT);
   });
@@ -569,6 +584,7 @@ test(
           );
           // Invocation 0 crashed after its answer.
           await waitUntil(() => fs.existsSync(exitMarker));
+          await afterChildExitSettled();
           // Invocations 1 and 2 crash before answering: transient crashes,
           // each request falls back to verbatim.
           outs.push(
