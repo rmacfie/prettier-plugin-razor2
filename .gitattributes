@@ -1,0 +1,4 @@
+# Windows checkouts must keep LF: prettier's default endOfLine is "lf" and
+# CI's `prettier --check .` (and fixture-comparison tests) would otherwise
+# flag every file.
+* text=auto eol=lf

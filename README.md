@@ -45,11 +45,23 @@ Optionally, disable the CSharpier integration to only format the HTML parts.
 
 ## C# formatting
 
-C# formatting requires the [CSharpier](https://csharpier.com) CLI on your `PATH`
-(`dotnet tool install csharpier`, invoked as `dotnet csharpier`). If it is not
-available, C# is left untouched and a one-time warning is printed. Set
-`csharpierEnabled: false` to disable C# formatting (and silence the warning), or
-override the command with `csharpierCommand`.
+C# formatting requires the [CSharpier](https://csharpier.com) CLI. The default
+command, `dotnet csharpier`, runs from the nearest folder above the file with a
+tool manifest (`dotnet-tools.json` / `.config/dotnet-tools.json`) — the same
+upward search the dotnet CLI performs — so a project's pinned tool version
+resolves even when the manifest sits in a sub-project of a monorepo, and each
+manifest tree gets one warm CSharpier process. When there is no manifest above
+the file, or the muxer still can't resolve the tool (editors run formatters from
+their own working directory — VS Code's Prettier extension uses `/`), a global
+CSharpier install is reached only through the fallback binary at
+`$DOTNET_CLI_HOME/.dotnet/tools/csharpier` (`csharpier.exe` on Windows;
+`$DOTNET_CLI_HOME` defaults to your home directory). If nothing runs, C# is left
+untouched and a one-time warning is printed, including the failing command's
+last stderr line. Set `csharpierEnabled: false` to disable C# formatting (and
+silence the warning), or override the command with `csharpierCommand` — a
+user-specified command is split on whitespace, gets no fallback, and must be
+something Node can start directly (`.cmd`/`.bat` files need a shell and won't
+start).
 
 # Known limitations
 

@@ -64,9 +64,16 @@ and the mask/format/restore pipeline are in [DESIGN.md](DESIGN.md).
   line-start directives) become `<div data-razor="N"></div>` placeholders;
   inline constructs (explicit `@(…)`, `@* *@` comments) become private-use text
   tokens so they don't force a line break.
-- `src/csharp.ts` — pipes C# through CSharpier (`dotnet csharpier`), stdin →
-  stdout. Every failure falls back to verbatim C#: warns once per command if
-  CSharpier isn't runnable; silent if it runs but rejects the input.
+- `src/csharp.ts` — pipes C# through CSharpier, stdin → stdout. One warm
+  pipe-files child per manifest folder (nearest `dotnet-tools.json` /
+  `.config/dotnet-tools.json` above the file, the same search dotnet performs;
+  `process.cwd()` when there's none). The default `dotnet csharpier` falls back
+  to the global tool binary (`$DOTNET_CLI_HOME/.dotnet/tools/csharpier[.exe]`)
+  on launch failures; proven commands are trusted and respawned after isolated
+  crashes/timeouts, with a streak of pre-answer deaths escalating to a launch
+  failure. Every failure falls back to verbatim C#: warns once per candidate
+  list (with the last child's stderr tail) if nothing can launch; silent if
+  CSharpier runs but rejects the input. Rationale lives in the source comments.
 
 Implicit expressions, razor attributes, `@@`, emails, HTML comments and
 components are NOT masked — Prettier handles them. Explicit `@(…)` expressions
