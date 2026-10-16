@@ -1,0 +1,14 @@
+tests/csharpier-launch.test.ts
+  h_26c32ee947709d 52-58,102-110,410,470-475,477-480,497,560-565,567-570,587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b2f03c17b9bce7920a7ed9dc54e749a04813cef",
+  "prompts": {},
+  "humans": {
+    "h_26c32ee947709d": {
+      "author": "Robert Macfie <robert@macfie.se>"
+    }
+  }
+}
