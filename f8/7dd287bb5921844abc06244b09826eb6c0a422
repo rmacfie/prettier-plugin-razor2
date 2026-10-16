@@ -1,0 +1,14 @@
+package.json
+  h_26c32ee947709d 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f87dd287bb5921844abc06244b09826eb6c0a422",
+  "prompts": {},
+  "humans": {
+    "h_26c32ee947709d": {
+      "author": "Robert Macfie <robert@macfie.se>"
+    }
+  }
+}
